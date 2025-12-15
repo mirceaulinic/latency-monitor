@@ -45,5 +45,5 @@ jobs:
 
     - name: Type check with mypy
       run: |
-        mypy . --install-types --non-interactive || true
+        mypy . --install-types --non-interactive --ignore-missing-imports
       continue-on-error: true
