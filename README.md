@@ -12,6 +12,8 @@ TCP and UDP latency monitoring tool, with pluggable interface for publishing met
 
 ## Installation
 
+> **Note**: Package is not yet published to PyPI. This section describes future installation once the package is available.
+
 Install from PyPI:
 
 ```bash
@@ -27,6 +29,8 @@ pip install -e .
 ```
 
 ## Usage
+
+> **Note**: This is a placeholder example. The actual API will be defined as the package is developed.
 
 Basic usage example:
 
@@ -47,6 +51,8 @@ monitor.start()
 ```
 
 ## Configuration
+
+> **Note**: Configuration format will be defined as the package is developed.
 
 Configuration options can be provided via:
 - Configuration file (YAML/JSON)
