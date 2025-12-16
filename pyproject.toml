@@ -1,0 +1,68 @@
+[project]
+name = "latency-monitor"
+version = "0.1.0"
+description = "Daemon that acts as both client & server for monitoring latency between different endpoints"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+authors = [
+  {name = "Mircea Ulinic", email = "ping@mirceaulinic.net"},
+]
+maintainers = [
+  {name = "Mircea Ulinic", email = "ping@mirceaulinic.net"}
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["tcp", "udp", "latency", "datadog", "prometheus"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Build Tools",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/mirceaulinic/latency-monitor"
+Documentation = "https://github.com/mirceaulinic/latency-monitor/README.md"
+Repository = "https://github.com/mirceaulinic/latency-monitor.git"
+Issues = "https://github.com/mirceaulinic/latency-monitor/issues"
+
+[project.scripts]
+latency-monitor="latency_monitor.main:start"
+
+[project.optional-dependencies]
+datadog = [
+    "datadog-api-client>=2.47.0",
+]
+prometheus = [
+    "prometheus-client>=0.23.1",
+]
+zeromq = [
+    "pyzmq>=27.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.12.0",
+    "isort>=7.0.0",
+    "pylama[toml]>=8.4.1",
+    "setuptools>=80.9.0",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-dracula-theme>=1.0.8",
+]
+
+[tool.uv]
+package = true
+
+[tool.isort]
+profile = "black"
+
+[tool.pylama]
+linters = "mccabe,pycodestyle,pyflakes"
+ignore = "D203,C901,E203,W0401"
+skip = ".env/*,.venv/*"
