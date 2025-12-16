@@ -1,0 +1,33 @@
+[project]
+name = "latency-monitor"
+version = "0.1.0"
+description = "Daemon that acts as bot client & server for monitoring latecy between different endpoints"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "tcp-latency>=0.0.12",
+]
+
+[project.scripts]
+latency-monitor="latency_monitor.main:start"
+
+[project.optional-dependencies]
+datadog = [
+    "datadog-api-client>=2.47.0",
+]
+prometheus = [
+    "prometheus-client>=0.23.1",
+]
+
+[tool.uv]
+package = true
+
+[tool.isort]
+profile = "black"
+
+[dependency-groups]
+dev = [
+    "black>=25.12.0",
+    "isort>=7.0.0",
+    "pylama>=8.4.1",
+]
