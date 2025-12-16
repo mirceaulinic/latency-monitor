@@ -1,0 +1,8 @@
+site_name: Latency Monitor
+site_url: !ENV READTHEDOCS_CANONICAL_URL
+repo_name: mirceaulinic/latency-monitor
+repo_url: https://github.com/mirceaulinic/latency-monitor
+theme:
+  name: dracula
+  logo: images/logo_small.png
+  favicon: images/favicon.png

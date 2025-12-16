@@ -1,0 +1,12 @@
+name = "lh-5000"
+tcp_port = 5000
+udp_port = 5001
+max_size = 1500
+
+[[targets]]
+host = "127.0.0.1"
+label = "lh-8000"
+tcp_port = 8000
+udp_port = 8001
+size = 1500
+tags = ["isp:local", "location:laptop"]
