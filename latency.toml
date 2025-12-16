@@ -1,3 +1,9 @@
+publisher = "datadog"
+
+[datadog]
+api_key = "blahbla"
+site = "us5.datadoghq.com"
+
 [targets."label1"]
 host = "10.0.0.1"
 tags = ["isp:foo", "cage:bar", "rack:baz"]

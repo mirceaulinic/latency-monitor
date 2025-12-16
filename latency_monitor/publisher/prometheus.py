@@ -3,10 +3,8 @@
 Prometheus publisher
 """
 
-from latency_monitor.publisher import Publisher
 
-
-class Prometheus(Publisher):
+class Prometheus:
     def __init__(self, **opts):
         """ """
         pass

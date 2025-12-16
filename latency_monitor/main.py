@@ -2,16 +2,23 @@
 """ """
 
 import argparse
-import textwrap
 import logging
 import multiprocessing
+import os
 import signal
+import sys
+import textwrap
 import tomllib
+
+from latency_monitor.core import *
+from latency_monitor.publisher import __publishers__
+
+log = logging.getLogger(__name__)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="",
+        description="Lightweight TCP and UDP latency monitoring tool",
         epilog=textwrap.dedent(
             """
             Examples:
@@ -110,36 +117,41 @@ def start():
     if not os.path.exists(cfg_path):
         log.critical("Unable to read the config file from %s", cfg_path)
         sys.exit(1)
-    with open(cfg_path, "rb") as f:
-        cfg = tomllib.load(f)
-    targets = opts.pop("targets")
+    try:
+        with open(cfg_path, "rb") as f:
+            opts = tomllib.load(f)
+    except tomllib.TOMLDecodeError as tde:
+        log.critical("Unable to read the TOML file %s", cfg_path, exc_info=True)
+        sys.exit(1)
+    targets = opts.get("targets", [])
     pub_q = multiprocessing.Queue()
-    log_level = opts.pop("log_level") or args.log_level
+    log_level = opts.get("log_level") or args.log_level
     if hasattr(logging, log_level):
         logging.basicConfig(level=getattr(logging, log_level))
+    pub_name = opts.get("publisher")
+    if pub_name not in __publishers__:
+        log.critical("You must select a valid publisher, exiting.")
+        sys.exit(1)
+    publisher = __publishers__[pub_name](**opts)
     signal.signal(signal.SIGTERM, _sigkill)
-    dd_server = _start_proc(start_datadog, pub_q, **opts)
-    poller = _start_proc(start_tcp_latency_pollers, pub_q, targets, **opts)
-    tcp_server = _start_proc(start_tcp_server, pub_q, targets, **opts)
-    udp_server = _start_proc(start_udp_server, pub_q, targets, **opts)
-    owd_udp_ps = _start_proc(start_owd_udp_clients, pub_q, targets, **opts)
-    owd_tcp_ps = _start_proc(start_owd_tcp_clients, pub_q, targets, **opts)
+    pub_proc = poller = tcp_server = udp_server = owd_udp_ps = owd_tcp_ps = None
     while True:
-        if not udp_server.is_alive():
+        if not pub_proc or not pub_proc.is_alive():
+            log.info("Looks like the Publisher process got terminated for some reason")
+            pub_proc = _start_proc(publisher.start, pub_q, **opts)
+        if not udp_server or not udp_server.is_alive():
             log.info("Looks like the UDP server got terminated for some reason")
-            udp_server = _start_proc(start_udp_server, pub_q, targets, **opts)
-        if not tcp_server.is_alive():
+            udp_server = _start_proc(start_udp_server, pub_q, **opts)
+        if not tcp_server or not tcp_server.is_alive():
             log.info("Looks like the TCP server got terminated for some reason")
-            tcp_server = _start_proc(start_tcp_server, pub_q, targets, **opts)
-        if not poller.is_alive():
-            poller = _start_proc(start_tcp_latency_pollers, pub_q, targets, **opts)
-        if not owd_udp_ps.is_alive():
-            owd_udp_ps = _start_proc(start_owd_udp_clients, pub_q, targets, **opts)
+            tcp_server = _start_proc(start_tcp_server, pub_q, **opts)
+        if not poller or not poller.is_alive():
+            log.info("Looks like the TCP latency process got terminated")
+            poller = _start_proc(start_tcp_latency_pollers, pub_q, **opts)
+        if not owd_udp_ps or not owd_udp_ps.is_alive():
             log.info("Looks like the UDP OWD process for the clients got terminated")
-        if not owd_tcp_ps.is_alive():
-            owd_tcp_ps = _start_proc(start_owd_tcp_clients, pub_q, targets, **opts)
+            owd_udp_ps = _start_proc(start_owd_udp_clients, pub_q, **opts)
+        if not owd_tcp_ps or not owd_tcp_ps.is_alive():
             log.info("Looks like the TCP OWD process for the clients got terminated")
-        if not dd_server.is_alive():
-            log.info("Looks like the Datadog process got terminated for some reason")
-            dd_server = _start_proc(start_datadog, pub_q, **opts)
+            owd_tcp_ps = _start_proc(start_owd_tcp_clients, pub_q, **opts)
         time.sleep(0.1)

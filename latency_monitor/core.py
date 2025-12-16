@@ -116,7 +116,7 @@ def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
     owd_ms = owd_ns / 1e6
     metric = {
         "metric": "udp.wan.owd",
-        "points": [(int(time.time()), owd_ms)],
+        "points": [(time.time_ns(), owd_ms)],
         "tags": tags,
     }
     log.debug("Adding UDP OWD metric to the Datadog queue: %s", metric)
@@ -124,7 +124,7 @@ def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
     seq_dict[addr] = seq
 
 
-def start_udp_server(pub_q, targets, **opts):
+def start_udp_server(pub_q, **opts):
     """
     Starts a server that listens to UDP connections on the port provided.
     """
@@ -251,7 +251,7 @@ def owd_udp_client(pub_q, target, **opts):
                     rtt_ms = 0
                 metric = {
                     "metric": "udp.wan.rtt",
-                    "points": [(int(time.time()), rtt_ms)],
+                    "points": [(time.time_ns(), rtt_ms)],
                     "tags": tags,
                 }
                 log.debug("[UDP OWD client] Adding metric to the queue: %s", metric)
@@ -335,7 +335,7 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
             tags.append(f"isp:{isp}")
         metric = {
             "metric": "tcp.wan.owd",
-            "points": [(int(time.time()), owd_ms)],
+            "points": [(time.time_ns(), owd_ms)],
             "tags": tags,
         }
         log.debug("[TCP OWD server] Adding metric to the queue %s", metric)
@@ -343,7 +343,7 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
         prev_seq = seq
 
 
-def start_tcp_server(pub_q, targets, **opts):
+def start_tcp_server(pub_q, **opts):
     """
     Starts a server that listens to TCP connections on the port provided.
     """
@@ -362,7 +362,7 @@ def start_tcp_server(pub_q, targets, **opts):
         t.start()
 
 
-def start_owd_tcp_clients(pub_q, targets, **opts):
+def start_owd_tcp_clients(pub_q, **opts):
     """
     Dispatch OWD TCP clients into their own threads.
     This function sports a keep-alive loop, as the threads might die when the
@@ -370,7 +370,10 @@ def start_owd_tcp_clients(pub_q, targets, **opts):
     """
     threads = {}
     while True:
-        for target in targets:
+        for target, target_cfg in targets.items():
+            ttype = target_cfg.get("type")
+            if ttype and ttype != "tcp":
+                continue
             if not target in threads:
                 log.info("[TCP OWD client] Starting thread for OWD target %s", target)
                 t = threading.Thread(
@@ -378,6 +381,7 @@ def start_owd_tcp_clients(pub_q, targets, **opts):
                     args=(
                         pub_q,
                         target,
+                        target_cfg,
                     ),
                     kwargs=opts,
                 )
@@ -395,7 +399,7 @@ def start_owd_tcp_clients(pub_q, targets, **opts):
         time.sleep(0.1)
 
 
-def owd_tcp_client(pub_q, target, **opts):
+def owd_tcp_client(pub_q, target_label, target_cfg, **opts):
     """
     Connects to a server and sends one single message containing the timestamp.
     """
@@ -454,7 +458,7 @@ def owd_tcp_client(pub_q, target, **opts):
                     )
                 rtt_metric = {
                     "metric": "tcp.wan.rtt",
-                    "points": [(int(time.time()), rtt_ms)],
+                    "points": [(time.time_ns(), rtt_ms)],
                     "tags": tags,
                 }
                 log.debug(
@@ -488,12 +492,16 @@ def start_tcp_latency_pollers(pub_q, targets, **opts):
     timeout = opts.get("timeout", 1.0)
     while True:
         threads = []
-        for target in targets:
+        for target, target_cfg in targets.items():
+            ttype = target_cfg.get("type")
+            if ttype and ttype != "tcp":
+                continue
             t = threading.Thread(
                 target=tcp_latency_poll,
                 args=(
                     pub_q,
                     target,
+                    target_cfg,
                 ),
                 kwargs=opts,
             )
@@ -504,24 +512,22 @@ def start_tcp_latency_pollers(pub_q, targets, **opts):
         time.sleep(0.1)
 
 
-def tcp_latency_poll(pub_q, target, **opts):
+def tcp_latency_poll(pub_q, target_label, target_cfg, **opts):
     """
-    Execute the TCP latency runs against the given ip and port, and ship the
-    metrics to Datadog.
-    target is a tuple of site name & IP.
+    Execute the TCP latency runs against the given ip and port, and send the
+    metrics to the publisher worker.
     """
     log.debug(
         "Polling target %s (%s, %d), running %d times with a %f gap",
-        target[0],
-        target[1],
-        opts["port"],
+        target_label,
+        target_cfg["host"],
+        opts["tcp_port"],
         opts["runs"],
         opts["timeout"],
     )
-    dc = opts.pop("dc")
-    runs = opts.pop("runs")
-    tags = [f"source:{dc}", f"target:{target[0]}"]
-    _ = opts.pop("dd_api_key", None)
+    tags = [f"source:{opts['name']}", f"target:{target_label}"]
+    if target_cfg["tags"]:
+        tags.extend(target_cfg["tags"])
 
     metric_points = []
     for _ in range(runs):
@@ -531,14 +537,16 @@ def tcp_latency_poll(pub_q, target, **opts):
         # Because of that, instead of using their runs, we execute our batch
         # and record the results, ensuring we have record 0 for failed probes
         # at the exact timestamp when it happened for accurate metrics.
-        probe_time = int(time.time())
-        results = tcp_latency.measure_latency(host=target[1], runs=1, **opts)
+        probe_time = time.time_ns()
+        results = tcp_latency.measure_latency(
+            host=target_cfg["host"], runs=1, timeout=opts["timeout"]
+        )
         if not results:
             log.error(
                 "Polling %s (%s, %d) returned no results, the destination is likely unreachable",
-                target[0],
-                target[1],
-                opts["port"],
+                target_label,
+                target_cfg["host"],
+                opts["tcp_port"],
             )
             results = [0]
         metric_points.append((probe_time, results[0]))
@@ -548,5 +556,5 @@ def tcp_latency_poll(pub_q, target, **opts):
         "points": metric_points,
         "tags": tags,
     }
-    log.debug("Adding TCP latency metric to the datadog queue: %s", metric)
+    log.debug("Adding TCP latency metric to the publisher queue: %s", metric)
     pub_q.put(metric)

@@ -2,8 +2,8 @@
 """
 Datadog publisher
 """
-
-from latency_monitor.publisher import Publisher
+import logging
+import os
 
 from datadog_api_client import ApiClient, Configuration
 from datadog_api_client.v2.api.metrics_api import MetricsApi
@@ -12,8 +12,10 @@ from datadog_api_client.v2.model.metric_payload import MetricPayload
 from datadog_api_client.v2.model.metric_point import MetricPoint
 from datadog_api_client.v2.model.metric_series import MetricSeries
 
+log = logging.getLogger(__name__)
 
-class Datadog(Publisher):
+
+class Datadog:
     def __init__(self, **opts):
         """ """
         dd_site = os.environ.get("DD_SITE", opts["datadog"]["site"])
@@ -70,7 +72,9 @@ class Datadog(Publisher):
                                 metric=metric["metric"],
                                 type=MetricIntakeType.GAUGE,
                                 points=[
-                                    MetricPoint(timestamp=p[0], value=p[1])
+                                    # datapoints are by default in nanoseconds,
+                                    # and Datadog needs seconds, int values
+                                    MetricPoint(timestamp=int(p[0] / 1e9), value=p[1])
                                     for p in metric["points"]
                                 ],
                                 tags=metric["tags"],
