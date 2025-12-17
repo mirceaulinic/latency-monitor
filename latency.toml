@@ -1,16 +1,16 @@
+name = "dummy"
 publisher = "datadog"
 
 [datadog]
 api_key = "blahbla"
 site = "us5.datadoghq.com"
 
-[targets."label1"]
-host = "10.0.0.1"
-tags = ["isp:foo", "cage:bar", "rack:baz"]
+[targets."10.0.0.1"]
+type = "udp"
+label = "blah"
+tags = ["dc:foo", "isp:bar"]
 
-[targets."label2"]
-host = "10.0.0.2"
-tags = ["isp:bla"]
-
-[targets]
-label3 = "10.0.0.3"
+[targets."10.0.0.2"]
+type = "tcp"
+label = "bleh"
+tags = ["iisp:baz"]

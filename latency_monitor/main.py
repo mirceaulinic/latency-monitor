@@ -113,7 +113,8 @@ def start():
     queue and ships them when we have sufficient data points.
     """
     args = parse_args()
-    cfg_path = os.path.join(os.getcwd(), "latency.toml")
+    signal.signal(signal.SIGTERM, _sigkill)
+    cfg_path = os.path.join(os.getcwd(), "latency.toml") or args.config_path
     if not os.path.exists(cfg_path):
         log.critical("Unable to read the config file from %s", cfg_path)
         sys.exit(1)
@@ -123,8 +124,6 @@ def start():
     except tomllib.TOMLDecodeError as tde:
         log.critical("Unable to read the TOML file %s", cfg_path, exc_info=True)
         sys.exit(1)
-    targets = opts.get("targets", [])
-    pub_q = multiprocessing.Queue()
     log_level = opts.get("log_level") or args.log_level
     if hasattr(logging, log_level):
         logging.basicConfig(level=getattr(logging, log_level))
@@ -132,8 +131,12 @@ def start():
     if pub_name not in __publishers__:
         log.critical("You must select a valid publisher, exiting.")
         sys.exit(1)
-    publisher = __publishers__[pub_name](**opts)
-    signal.signal(signal.SIGTERM, _sigkill)
+    pub_q = multiprocessing.Queue()
+    publisher = __publishers__[pub_name](pub_q, **opts)
+    if "tcp_port" not in opts:
+        opts["tcp_port"] = args.tcp_port
+    if "udp_port" not in opts:
+        opts["udp_port"] = args.udp_port
     pub_proc = poller = tcp_server = udp_server = owd_udp_ps = owd_tcp_ps = None
     while True:
         if not pub_proc or not pub_proc.is_alive():
