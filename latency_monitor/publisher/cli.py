@@ -18,7 +18,7 @@ FMT_MAP = {
 class Cli:
     def __init__(self, **opts):
         """ """
-        fmt = opts.get("cli_publisher", {}).get("format", "json")
+        fmt = opts["metrics"].get("format", "json")
         self.fun = FMT_MAP.get(fmt)
 
     def start(self, pub_q, **opts):

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Datadog publisher
+=================
 """
 import logging
 import os
@@ -19,8 +20,8 @@ log = logging.getLogger(__name__)
 class Datadog:
     def __init__(self, **opts):
         """ """
-        dd_site = os.environ.get("DD_SITE", opts["datadog"]["site"])
-        api_key = os.environ.get("DD_API_KEY", opts["datadog"]["api_key"])
+        dd_site = os.environ.get("DD_SITE", opts["metrics"]["site"])
+        api_key = os.environ.get("DD_API_KEY", opts["metrics"]["api_key"])
         self.cfg = Configuration()
         self.cfg.server_variables["site"] = dd_site
         if api_key:
@@ -47,7 +48,9 @@ class Datadog:
         last_send = 0
         ship_metrics = []
         log.debug("Starting Datadog worker")
-        wait_time = opts["dataddog"].get("send_interval", opts["runs"] * opts["interval"])
+        wait_time = opts["metrics"].get(
+            "send_interval", opts["runs"] * opts["interval"]
+        )
         while True:
             log.debug("[Datadog] Waiting for a new metric")
             m = pub_q.get()

@@ -25,14 +25,68 @@ For development installation:
 ```bash
 git clone https://github.com/mirceaulinic/latency-monitor.git
 cd latency-monitor
-pip install -e .
+uv sync
 ```
+
+## Configuration
+
+Configuration options can be provided using the ``latency.toml`` file (in TOML format). By default, the program will 
+look for it in the current running directory, otherwise you can use the ``-c`` or ``--config-file`` CLI argument to 
+provide the absolute path (including the file name).
+
+Example configuration:
+
+```toml
+name = "this-host"
+
+[targets."10.0.0.1"]
+label = "some-host"
+
+[targets."10.0.0.2"]
+label = "other-host"
+port = 1717
+
+[targets."10.0.0.3"]
+label = "dummy-target"
+interval = 10
+
+[metrics]
+backend = "prometheus"
+port = 9090
+```
+
+For every target you want to monitor, you can define a configuration block, with the following options:
+
+```toml
+[targets."<IP>"]
+label = "<label>"
+port = <port>
+interval = <interval>
+type = <TCP or UDP>
+```
+
+Any of these settings are optional, except the IP, of course, and are pretty self-explanatory.
+## Metrics Publishing
+
+The tool supports pluggable metrics backends:
+
+- Datadog
+- Prometheus
+- Cli
+- Log
+
+The last two are probably more important for debugging purposes, than actual production use.
 
 ## Usage
 
-> **Note**: This is a placeholder example. The actual API will be defined as the package is developed.
+Once you have the configuration file in place, you can start the daemon (in foreground, won't return the command line 
+until you stop via Ctrl-C):
 
-Basic usage example:
+```bash
+$ latency-monitor -c /path/to/config.toml
+```
+
+There's also a basic API you can use from your programs, should you wish to build on top of this library:
 
 ```python
 from latency_monitor import LatencyMonitor
@@ -41,49 +95,17 @@ from latency_monitor import LatencyMonitor
 monitor = LatencyMonitor()
 
 # Add TCP endpoint
-monitor.add_tcp_target("example.com", 80)
+monitor.add_tcp_target("10.0.0.1", port=8000)
 
 # Add UDP endpoint
-monitor.add_udp_target("example.com", 53)
+monitor.add_udp_target("10.0.0.2, port=5001)
 
 # Start monitoring
 monitor.start()
+
+# Pick metrics from the queue yourself. You'll need to invoke this in a separate thread than .start()
+metric = monitor.pub_q.get()
 ```
-
-## Configuration
-
-> **Note**: Configuration format will be defined as the package is developed.
-
-Configuration options can be provided via:
-- Configuration file (YAML/JSON)
-- Environment variables
-- Direct API calls
-
-Example configuration:
-
-```yaml
-targets:
-  - type: tcp
-    host: example.com
-    port: 80
-    interval: 60
-  - type: udp
-    host: example.com
-    port: 53
-    interval: 30
-
-metrics:
-  backend: prometheus
-  port: 9090
-```
-
-## Metrics Publishing
-
-The tool supports pluggable metrics backends:
-- Prometheus
-- InfluxDB
-- CloudWatch
-- Custom backends via plugin interface
 
 ## Contributing
 
@@ -108,10 +130,7 @@ black .
 isort .
 
 # Run linters
-flake8 .
-
-# Run tests
-pytest
+pylama .
 ```
 
 ## License

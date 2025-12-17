@@ -1,9 +1,7 @@
 name = "dummy"
-publisher = "log"
 
-[datadog]
-api_key = "blahbla"
-site = "us5.datadoghq.com"
+[metrics]
+backend = "log"
 
 [targets."10.0.0.1"]
 type = "udp"

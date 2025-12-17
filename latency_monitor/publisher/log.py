@@ -18,12 +18,12 @@ log = logging.getLogger(__name__)
 class Log:
     def __init__(self, **opts):
         """ """
-        log_level = opts.get("log_publisher", {}).get("level", "warning")
+        log_level = opts["metrics"].get("level", "warning")
         if log_level and hasattr(log, log_level):
             self.fun = getattr(log, log_level)
         else:
             self.fun = log.warning
-        fmt = opts.get("log_publisher", {}).get("format", "json")
+        fmt = opts["metrics"].get("format", "json")
         self.fmt = FMT_MAP.get(fmt)
 
     def start(self, pub_q, **opts):

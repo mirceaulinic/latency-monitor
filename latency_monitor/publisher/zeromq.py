@@ -4,6 +4,13 @@ ZeroMQ publisher
 ================
 
 Puts the metrics on the event bus as soon as they're received.
+
+By default, the ZMQ socket will bind on the local port 8002 (listening to any
+interface), but you can change that using the ``address`` and ``port`` options
+that you can provide under the ``metrics`` block.
+
+Once you started up the process, you can then subscribe to the ZMQ bus and start
+receiving the metrics.
 """
 
 import logging
@@ -21,8 +28,8 @@ log = logging.getLogger(__name__)
 class ZeroMQ:
     def __init__(self, **opts):
         """ """
-        self.address = opts["zeromq"].get("address", "0.0.0.0")
-        self.port = opts["zeromq"].get("port", 8002)
+        self.address = opts["metrics"].get("address", "0.0.0.0")
+        self.port = opts["metrics"].get("port", 8002)
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PUB)
         if ":" in self.address:

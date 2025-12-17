@@ -132,8 +132,8 @@ def start(cli=True, args=None, pub_q=None):
     log_level = opts.get("log_level") or args.log_level
     if hasattr(logging, log_level):
         logging.basicConfig(level=getattr(logging, log_level))
-    pub_name = opts.get("publisher")
-    if pub_name not in __publishers__:
+    pub_name = opts.get("metrics", {}).get("backend")
+    if pub_name and pub_name not in __publishers__:
         log.critical("You must select a valid publisher, exiting.")
         sys.exit(1)
     log.debug("Merging file configuration with CLI args")
@@ -143,10 +143,15 @@ def start(cli=True, args=None, pub_q=None):
     log.debug("These is the config we're gonna run: %s", opts)
     if not pub_q:
         pub_q = multiprocessing.Queue()
-    publisher = __publishers__[pub_name](**opts)
+    if pub_name:
+        publisher = __publishers__[pub_name](**opts)
+    else:
+        log.warning(
+            "No Publisher configured, will skip assuming you're using the API. Otherwise, make sure you have a metrics backend configured."
+        )
     pub_proc = poller = tcp_server = udp_server = owd_udp_ps = owd_tcp_ps = None
     while True:
-        if not pub_proc or not pub_proc.is_alive():
+        if pub_name and (not pub_proc or not pub_proc.is_alive()):
             log.info("Looks like the Publisher process got terminated for some reason")
             pub_proc = _start_proc(publisher.start, pub_q, **opts)
         if not udp_server or not udp_server.is_alive():
