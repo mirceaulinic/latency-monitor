@@ -47,7 +47,7 @@ class Datadog:
         last_send = 0
         ship_metrics = []
         log.debug("Starting Datadog worker")
-        wait_time = opts["runs"] * opts["interval"]
+        wait_time = opts["dataddog"].get("send_interval", opts["runs"] * opts["interval"])
         while True:
             log.debug("[Datadog] Waiting for a new metric")
             m = pub_q.get()
@@ -94,4 +94,3 @@ class Datadog:
                         "Unable to send metrics to Datadog, will try again later",
                         exc_info=True,
                     )
-            time.sleep(0.01)

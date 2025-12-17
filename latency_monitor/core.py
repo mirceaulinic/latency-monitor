@@ -1,49 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-This is a script meant to be running as a daemon, executing "ping"-like requests
-to a target IP and port, and exports the data as Datadog metrics.
-
-This program assumes that it can also be used as a target, in order to be polled
-by other daemons like this one, deployed elsewhere.
-
-There are three different metrics produced by running this daemon:
-
-    - tcp.wan.latency, based on the measurements from the tcp-latency library
-    - tcp.wan.owd and tcp.wan.rtt produced by a basic client-server setup that
-      sends timestamps back and forth in order to measure the One Way Delay
-      (OWD) and Round Trip Time (RTT) between the source and its targets.
-    - udp.wan.owd and udp.wan.rtt with similar meaning and behaviour, except
-      that the packets are more likely to get lost in case of poor connectivity
-      between the source and destination(s).
-
-This requires a .ini configuration file, named latency.ini located into the same
-directory where this program is executed from. This file has the following
-structure (example):
-
-[config]
-dc = LD
-port = 8001
-runs = 10
-timeout = 1.5
-interval = 0.5
-dd_api_key = <Datadog API key>
-
-[targets]
-TY = 10.61.6.81
-BD = 10.21.6.81
-NY = 10.31.6.81
-
-The targets are, of course, necessary, otherwise this program won't poll
-anything. Similarly, the ``dc`` under the ``config`` section is required in
-order to identify the source and apply it as a label to the metrics.
-The ``dd_api_key`` is recommended when running on Windows, as it seems
-tremendously difficult to set environment variables (or anything whatsoever).
-
-This program has the following dependencies:
-
-    - tcp-latency
-    - datadog-api-client
-"""
+""" """
 import logging
 import os
 import select
@@ -74,6 +30,9 @@ def _next_seq(seq):
 
 
 def _build_tags(source, target, target_cfg):
+    """
+    Return a list of tags given the source and the target.
+    """
     return [
         f"source:{source}",
         "target:{}".format(target_cfg.get("label", target)),
@@ -322,7 +281,8 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
             continue
         conn.sendall(
             bytes(
-                MSG_FMT.format(seq=seq, timestamp=ts, source=opts["name"], tags=rtags)
+                MSG_FMT.format(seq=seq, timestamp=ts, source=opts["name"], tags=rtags),
+                "utf-8",
             )
         )
         expected_seq = _next_seq(prev_seq)

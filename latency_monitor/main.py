@@ -23,20 +23,24 @@ def parse_args():
             """
             Examples:
               Run with defaults:
-                app.py -c config.yaml
+                latency-monitor -c latency.toml
 
               Run 10 times with 1s interval:
-                app.py -r 10 -i 1
+                latency-monitor -i 1 -t 2 -r 10
 
-              Enable debug logging and write to file:
-                app.py -l DEBUG -f app.log
+              Enable debug logging:
+                latency-monitor -l DEBUG
         """
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(
-        "-c", "--config-path", type=str, help="Path to configuration file"
+        "-c",
+        "--config-path",
+        type=str,
+        default=os.path.join(os.getcwd(), "latency.toml"),
+        help="Path to configuration file",
     )
 
     logging_args = parser.add_argument_group("Logging options")
@@ -104,7 +108,7 @@ def _sigkill(signal, frame):
     sys.exit(0)
 
 
-def start():
+def start(cli=True, args=None, pub_q=None):
     """
     Starts one subprocess for each TCP and UDP servers that'll be listening for
     incoming connections, and another subprocess for a multi-threaded dispatcher
@@ -112,9 +116,10 @@ def start():
     For Datadog, we have a separate subprocess that picks the metrics from the
     queue and ships them when we have sufficient data points.
     """
-    args = parse_args()
+    if cli:
+        args = parse_args()
     signal.signal(signal.SIGTERM, _sigkill)
-    cfg_path = os.path.join(os.getcwd(), "latency.toml") or args.config_path
+    cfg_path = args.config_path or os.path.join(os.getcwd(), "latency.toml")
     if not os.path.exists(cfg_path):
         log.critical("Unable to read the config file from %s", cfg_path)
         sys.exit(1)
@@ -136,7 +141,8 @@ def start():
         if opt not in opts:
             opts[opt] = getattr(args, opt)
     log.debug("These is the config we're gonna run: %s", opts)
-    pub_q = multiprocessing.Queue()
+    if not pub_q:
+        pub_q = multiprocessing.Queue()
     publisher = __publishers__[pub_name](**opts)
     pub_proc = poller = tcp_server = udp_server = owd_udp_ps = owd_tcp_ps = None
     while True:
