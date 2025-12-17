@@ -4,6 +4,7 @@ Datadog publisher
 """
 import logging
 import os
+import time
 
 from datadog_api_client import ApiClient, Configuration
 from datadog_api_client.v2.api.metrics_api import MetricsApi
@@ -16,12 +17,10 @@ log = logging.getLogger(__name__)
 
 
 class Datadog:
-    def __init__(self, pub_q, **opts):
+    def __init__(self, **opts):
         """ """
-        self.opts = opts
-        self.pub_q = pub_q
-        dd_site = os.environ.get("DD_SITE", self.opts["datadog"]["site"])
-        api_key = os.environ.get("DD_API_KEY", self.opts["datadog"]["api_key"])
+        dd_site = os.environ.get("DD_SITE", opts["datadog"]["site"])
+        api_key = os.environ.get("DD_API_KEY", opts["datadog"]["api_key"])
         self.cfg = Configuration()
         self.cfg.server_variables["site"] = dd_site
         if api_key:
@@ -39,7 +38,7 @@ class Datadog:
                 response = api_instance.submit_metrics(body=metric)
                 log.debug(response)
 
-    def start(self):
+    def start(self, pub_q, **opts):
         """
         Worker that constantly checks if there's a new metric into the queue, then
         adds it to the metrics list or ships to Datadog.
@@ -48,10 +47,10 @@ class Datadog:
         last_send = 0
         ship_metrics = []
         log.debug("Starting Datadog worker")
-        wait_time = self.opts["runs"] * self.opts["interval"]
+        wait_time = opts["runs"] * opts["interval"]
         while True:
             log.debug("[Datadog] Waiting for a new metric")
-            m = self.pub_q.get()
+            m = pub_q.get()
             log.debug("[Datadog] Picked metric from the queue: %s", m)
             found = False
             for metric in metrics:

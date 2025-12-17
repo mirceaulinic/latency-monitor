@@ -526,7 +526,7 @@ def tcp_latency_poll(pub_q, target, target_cfg, **opts):
     )
     tags = _build_tags(opts["name"], target, target_cfg)
     metric_points = []
-    for _ in range(runs):
+    for _ in range(opts["runs"]):
         # tcp_latency's measure_latency function doesn't return the results for
         # the failed probes, e.g., if a batch of 10 runs has 2 failures, then
         # results is a list of 8 results.

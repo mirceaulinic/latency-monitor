@@ -131,12 +131,13 @@ def start():
     if pub_name not in __publishers__:
         log.critical("You must select a valid publisher, exiting.")
         sys.exit(1)
+    log.debug("Merging file configuration with CLI args")
+    for opt in ("tcp_port", "udp_port", "runs", "timeout", "interval"):
+        if opt not in opts:
+            opts[opt] = getattr(args, opt)
+    log.debug("These is the config we're gonna run: %s", opts)
     pub_q = multiprocessing.Queue()
-    publisher = __publishers__[pub_name](pub_q, **opts)
-    if "tcp_port" not in opts:
-        opts["tcp_port"] = args.tcp_port
-    if "udp_port" not in opts:
-        opts["udp_port"] = args.udp_port
+    publisher = __publishers__[pub_name](**opts)
     pub_proc = poller = tcp_server = udp_server = owd_udp_ps = owd_tcp_ps = None
     while True:
         if not pub_proc or not pub_proc.is_alive():

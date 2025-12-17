@@ -5,12 +5,11 @@ Prometheus publisher
 
 
 class Prometheus:
-    def __init__(self, pub_q, **opts):
+    def __init__(self, **opts):
         """ """
-        self.pub_q = pub_q
-        self.opts = opts
+        pass
 
-    def start(self):
+    def start(sel, pub_q, **opts):
         """
         Worker that constantly checks if there's a new metric into the queue, then
         adds it to the metrics list or ships to Datadog.
@@ -22,7 +21,7 @@ class Prometheus:
         wait_time = opts["runs"] * opts["interval"]
         while True:
             log.debug("[Datadog] Waiting for a new metric")
-            m = self.pub_q.get()
+            m = pub_q.get()
             log.debug("[Datadog] Picked metric from the queue: %s", m)
             found = False
             for metric in metrics:
