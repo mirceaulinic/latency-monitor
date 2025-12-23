@@ -3,12 +3,23 @@ name = "dummy"
 [metrics]
 backend = "log"
 
-[targets."10.0.0.1"]
-type = "udp"
+[[targets]]
+host = "10.0.0.1"
+type = "tcp"
 label = "blah"
+port = 5000
 tags = ["dc:foo", "isp:bar"]
 
-[targets."10.0.0.2"]
+[[targets]]
+host = "10.0.0.1"
+label = "blah"
 type = "tcp"
+size = 65515
+port = 1234
+tags = ["dc:foo", "isp:bar", "large:true"]
+
+[[targets]]
+host = "10.0.0.2"
 label = "bleh"
-tags = ["iisp:baz"]
+type = "udp"
+tags = ["isp:baz"]

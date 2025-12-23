@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
-""" """
+"""
+Latency Monitoring Core
+=======================
+
+This is where fun happens. This is a classless implementation of several
+independent functions that are invoked when spawning the client and severs for
+the UDP and TCP connections. They expect a publishing queue object being passed
+on, where they add the resulting metrics. A separate worker picks up the
+metrics from the queue and publishes them over the channel of choice.
+"""
 import logging
 import os
 import select
@@ -16,8 +25,9 @@ log = logging.getLogger(__name__)
 
 MAX_SEQ = 100
 MAX_CONN = 40
+MAX_SIZE = 1470
 
-MSG_FMT = "{seq}|{source}|{timestamp}|{tags}"
+MSG_FMT = "{seq}|{source}|{timestamp}|{tags}|"
 
 
 def _next_seq(seq):
@@ -29,14 +39,14 @@ def _next_seq(seq):
     return seq + 1
 
 
-def _build_tags(source, target, target_cfg):
+def _build_tags(source, target):
     """
     Return a list of tags given the source and the target.
     """
     return [
         f"source:{source}",
-        "target:{}".format(target_cfg.get("label", target)),
-    ] + target_cfg.get("tags", [])
+        "target:{}".format(target.get("label", target["host"])),
+    ] + target.get("tags", [])
 
 
 def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
@@ -50,7 +60,7 @@ def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
     if not data:
         return
     try:
-        seq, src, send_ts, rtags = str(data, "utf-8").split("|")
+        seq, src, send_ts, rtags, padding = str(data, "utf-8").split("|")
         log.debug(
             "[UDP OWD client] Received timestamp %s (SEQ: %d) from source: %s, with tags: %s",
             send_ts,
@@ -70,7 +80,12 @@ def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
         seq = MAX_SEQ + 1
     log.debug("[UDP OWD client] Sending timestamp %s to client %s", ts, addr)
     srv.sendto(
-        MSG_FMT.format(seq=seq, source=opts["name"], timestamp=ts, tags=rtags), addr
+        bytes(
+            MSG_FMT.format(seq=seq, source=opts["name"], timestamp=ts, tags=rtags)
+            + padding,
+            "utf-8",
+        ),
+        addr,
     )
     tags = [f"source:{src}", f"target:{opts['name']}"] + rtags
     prev_seq = seq_dict.get(addr, -1)
@@ -94,13 +109,16 @@ def start_udp_server(pub_q, **opts):
     """
     log.debug("Starting the UDP server, bring it on")
 
-    srv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    srv.bind(("0.0.0.0", opts["udp_port"]))
+    addr = opts.get("address", "0.0.0.0")
+    srv = socket.socket(
+        socket.AF_INET6 if ":" in addr else socket.AF_INET, socket.SOCK_DGRAM
+    )
+    srv.bind((addr, opts["udp_port"]))
 
     client_seqs = {}
 
     while True:
-        data, addr = srv.recvfrom(128)
+        data, addr = srv.recvfrom(opts.get("max_size", MAX_SIZE))
         ts = time.time_ns()
         t = threading.Thread(
             target=serve_owd_udp,
@@ -125,58 +143,57 @@ def start_owd_udp_clients(pub_q, **opts):
     """
     threads = {}
     while True:
-        for target, target_cfg in opts["targets"].items():
-            ttype = target_cfg.get("type")
+        for tid, tgt in enumerate(opts["targets"]):
+            ttype = tgt.get("type")
             if ttype and ttype != "udp":
                 continue
-            if not target in threads:
-                log.info("Starting thread for UDP OWD target %s", target)
+            if not tid in threads:
+                log.info("Starting thread for UDP OWD target %s", tgt)
                 t = threading.Thread(
                     target=owd_udp_client,
                     args=(
                         pub_q,
-                        target,
-                        target_cfg,
+                        tgt,
                     ),
                     kwargs=opts,
                 )
                 t.start()
-                threads[target] = t
+                threads[tid] = t
             else:
                 # Thread exists but might not longer be active.
-                t = threads[target]
+                t = threads[tid]
                 if not t.is_alive():
                     log.info(
                         "Thread for UDP OWD target %s got interrupted, respawning",
-                        target,
+                        tgt,
                     )
-                    threads.pop(target)
+                    threads.pop(tid)
         time.sleep(0.1)
 
 
-def owd_udp_client(pub_q, target, target_cfg, **opts):
+def owd_udp_client(pub_q, target, **opts):
     """
     Connects to a server and sends one single message containing the sequence
     number, the timestamp, the source DC as well as the ISP name.
     """
-    tags = _build_tags(opts["name"], target, target_cfg)
+    tags = _build_tags(opts["name"], target)
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as skt:
             seq = 0
             while True:
                 ts = time.time_ns()
                 log.debug("[UDP OWD client] sending timestamp %s to %s", ts, target)
+                msg = MSG_FMT.format(
+                    seq=seq,
+                    source=opts["name"],
+                    timestamp=ts,
+                    tags=target.get("tags", []),
+                )
+                if target.get("size") and len(msg) < target["size"]:
+                    msg += "0" * (target["size"] - len(msg))
                 skt.sendto(
-                    bytes(
-                        MSG_FMT.format(
-                            seq=seq,
-                            source=opts["name"],
-                            timestamp=ts,
-                            tags=target_cfg.get("tags", []),
-                        ),
-                        "utf-8",
-                    ),
-                    (target, opts["udp_port"]),
+                    bytes(msg, "utf-8"),
+                    (target["host"], target.get("port", opts["udp_port"])),
                 )
                 incoming = select.select([skt], [], [], opts["timeout"])
                 try:
@@ -191,7 +208,9 @@ def owd_udp_client(pub_q, target, target_cfg, **opts):
                 rtt_ns = time.time_ns() - ts
                 rtt_ms = rtt_ns / 1e6
                 try:
-                    srv_seq, srv_srv, owd_ns, srv_tags = str(data, "utf-8").split("|")
+                    srv_seq, srv_srv, owd_ns, srv_tags, padding = str(
+                        data, "utf-8"
+                    ).split("|")
                     log.debug(
                         "[UDP OWD client] received OWD timestamp %s (SEQ: %d) from %s",
                         owd_ns,
@@ -236,7 +255,7 @@ def owd_udp_client(pub_q, target, target_cfg, **opts):
             exc_info=True,
         )
         time.sleep(0.1)
-        owd_udp_client(pub_q, target, target_cfg, **opts)
+        owd_udp_client(pub_q, target, **opts)
 
 
 def serve_owd_tcp(pub_q, conn, addr, **opts):
@@ -250,7 +269,7 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
     prev_seq = -1
     while True:
         try:
-            data = conn.recv(128)
+            data = conn.recv(opts.get("max_size", MAX_SIZE))
             ts = time.time_ns()
         except OSError:
             log.error(
@@ -262,7 +281,7 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
         if not data:
             break
         try:
-            seq, src, send_ts, rtags = str(data, "utf-8").split("|")
+            seq, src, send_ts, rtags, padding = str(data, "utf-8").split("|")
             log.debug(
                 "[TCP OWD server] Received timestamp %s (SEQ: %d) from source %s, with tags %s",
                 send_ts,
@@ -281,7 +300,8 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
             continue
         conn.sendall(
             bytes(
-                MSG_FMT.format(seq=seq, timestamp=ts, source=opts["name"], tags=rtags),
+                MSG_FMT.format(seq=seq, timestamp=ts, source=opts["name"], tags=rtags)
+                + padding,
                 "utf-8",
             )
         )
@@ -313,8 +333,11 @@ def start_tcp_server(pub_q, **opts):
     """
     log.debug("Starting the TCP server, bring it on")
 
-    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    srv.bind(("0.0.0.0", opts["tcp_port"]))
+    addr = opts.get("address", "0.0.0.0")
+    srv = socket.socket(
+        socket.AF_INET6 if ":" in addr else socket.AF_INET, socket.SOCK_STREAM
+    )
+    srv.bind((addr, opts["tcp_port"]))
     srv.listen(MAX_CONN)
 
     while True:
@@ -334,69 +357,71 @@ def start_owd_tcp_clients(pub_q, **opts):
     """
     threads = {}
     while True:
-        for target, target_cfg in opts["targets"].items():
-            ttype = target_cfg.get("type")
+        for tid, tgt in enumerate(opts["targets"]):
+            ttype = tgt.get("type")
             if ttype and ttype != "tcp":
                 continue
-            if not target in threads:
-                log.info("[TCP OWD client] Starting thread for OWD target %s", target)
+            if not tid in threads:
+                log.info("[TCP OWD client] Starting thread for OWD target %s", tgt)
                 t = threading.Thread(
                     target=owd_tcp_client,
                     args=(
                         pub_q,
-                        target,
-                        target_cfg,
+                        tgt,
                     ),
                     kwargs=opts,
                 )
                 t.start()
-                threads[target] = t
+                threads[tid] = t
             else:
                 # Thread exists but might not longer be active.
-                t = threads[target]
+                t = threads[tid]
                 if not t.is_alive():
                     log.info(
                         "[TCP OWD client] Thread for target %s got interrupted, respawning",
-                        target,
+                        tgt,
                     )
-                    threads.pop(target)
+                    threads.pop(tid)
         time.sleep(0.1)
 
 
-def owd_tcp_client(pub_q, target, target_cfg, **opts):
+def owd_tcp_client(pub_q, target, **opts):
     """
     Connects to a server and sends one single message containing the timestamp.
     """
-    tags = _build_tags(opts["name"], target, target_cfg)
+    tags = _build_tags(opts["name"], target)
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as skt:
+        with socket.socket(
+            socket.AF_INET6 if ":" in target["host"] else socket.AF_INET,
+            socket.SOCK_STREAM,
+        ) as skt:
             try:
-                skt.connect((target, opts["tcp_port"]))
+                skt.connect((target["host"], target.get("port", opts["tcp_port"])))
             except Exception as err:
                 # log and fail loudly, forcing a process restart
                 log.error(
                     "[TCP OWD client] Unable to connect to %s:%d",
-                    target,
-                    opts["tcp_port"],
+                    target["host"],
+                    target.get("port", opts["tcp_port"]),
                     exc_info=True,
                 )
                 raise err
             seq = 0
             while True:
                 ts = time.time_ns()
-                skt.sendall(
-                    bytes(
-                        MSG_FMT.format(
-                            seq=seq, timestamp=ts, source=opts["name"], tags=tags
-                        ),
-                        "utf-8",
-                    )
+                msg = MSG_FMT.format(
+                    seq=seq, timestamp=ts, source=opts["name"], tags=tags
                 )
-                data = skt.recv(128)
+                if target.get("size") and len(msg) < target["size"]:
+                    msg += "0" * (target["size"] - len(msg))
+                skt.sendall(bytes(msg, "utf-8"))
+                data = skt.recv(opts.get("max_size", MAX_SIZE))
                 rtt_ns = time.time_ns() - ts
                 rtt_ms = rtt_ns / 1e6
                 try:
-                    srv_seq, srv_src, srv_ts, rtags = str(data, "utf-8").split("|")
+                    srv_seq, srv_src, srv_ts, rtags, padding = str(data, "utf-8").split(
+                        "|"
+                    )
                     log.debug(
                         "[TCP OWD client] received RTT timestamp %s (SEQ: %d) from %s with tags: %",
                         srv_ts,
@@ -441,7 +466,7 @@ def owd_tcp_client(pub_q, target, target_cfg, **opts):
             exc_info=True,
         )
         time.sleep(0.1)
-        owd_tcp_client(pub_q, target, target_cfg, **opts)
+        owd_tcp_client(pub_q, target, **opts)
 
 
 def start_tcp_latency_pollers(pub_q, **opts):
@@ -452,16 +477,15 @@ def start_tcp_latency_pollers(pub_q, **opts):
     timeout = opts.get("timeout", 1.0)
     while True:
         threads = []
-        for target, target_cfg in opts["targets"].items():
-            ttype = target_cfg.get("type")
+        for tid, tgt in enumerate(opts["targets"]):
+            ttype = tgt.get("type")
             if ttype and ttype != "tcp":
                 continue
             t = threading.Thread(
                 target=tcp_latency_poll,
                 args=(
                     pub_q,
-                    target,
-                    target_cfg,
+                    tgt,
                 ),
                 kwargs=opts,
             )
@@ -472,19 +496,18 @@ def start_tcp_latency_pollers(pub_q, **opts):
         time.sleep(0.1)
 
 
-def tcp_latency_poll(pub_q, target, target_cfg, **opts):
+def tcp_latency_poll(pub_q, target, **opts):
     """
     Execute the TCP latency runs against the given ip and port, and send the
     metrics to the publisher worker.
     """
     log.debug(
-        "Polling target %s (port %d), running %d times with a %f gap",
+        "Polling target %s, running %d times with a %f gap",
         target,
-        opts["tcp_port"],
         opts["runs"],
         opts["timeout"],
     )
-    tags = _build_tags(opts["name"], target, target_cfg)
+    tags = _build_tags(opts["name"], target)
     metric_points = []
     for _ in range(opts["runs"]):
         # tcp_latency's measure_latency function doesn't return the results for
@@ -495,13 +518,15 @@ def tcp_latency_poll(pub_q, target, target_cfg, **opts):
         # at the exact timestamp when it happened for accurate metrics.
         probe_time = time.time_ns()
         results = tcp_latency.measure_latency(
-            host=target, runs=1, timeout=opts["timeout"]
+            host=target["host"],
+            port=target.get("port", opts["tcp_port"]),
+            runs=1,
+            timeout=opts["timeout"],
         )
         if not results:
             log.error(
-                "Polling %s (port %d) returned no results, the destination is likely unreachable",
+                "Polling %s returned no results, the destination is likely unreachable",
                 target,
-                opts["tcp_port"],
             )
             results = [0]
         metric_points.append((probe_time, results[0]))
