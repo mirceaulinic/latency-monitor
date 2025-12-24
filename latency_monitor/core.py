@@ -17,6 +17,7 @@ import socket
 import sys
 import threading
 import time
+import ast
 
 import tcp_latency
 
@@ -54,7 +55,7 @@ def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
     Receives the packet from the OWD client, extracts the timestamp and sends
     the metric to the Datadog queue.
     """
-    log.info(
+    log.debug(
         "[UDP OWD server] Received connection from %s, you're welcome my friend", addr
     )
     if not data:
@@ -68,7 +69,8 @@ def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
             src,
             rtags,
         )
-        owd_ns = ts - send_ts
+        owd_ns = ts - int(send_ts)
+        seq = int(seq)
     except ValueError:
         log.error(
             "[UDP OWD client] Unable to unpack the timestamp from source: %s, with tags %s: %s",
@@ -87,7 +89,9 @@ def serve_owd_udp(pub_q, srv, ts, data, addr, seq_dict, **opts):
         ),
         addr,
     )
-    tags = [f"source:{src}", f"target:{opts['name']}"] + rtags
+    tags = [f"source:{src}", f"target:{opts['name']}"] + (
+        ast.literal_eval(rtags) if rtags else []
+    )
     prev_seq = seq_dict.get(addr, -1)
     expected_seq = _next_seq(prev_seq) if prev_seq > 0 else -1
     if owd_ns < 0 or (expected_seq > 0 and seq != expected_seq):
@@ -176,6 +180,10 @@ def owd_udp_client(pub_q, target, **opts):
     Connects to a server and sends one single message containing the sequence
     number, the timestamp, the source DC as well as the ISP name.
     """
+    size = target.get("size", opts.get("size"))
+    port = target.get("udp_port", opts["udp_port"])
+    tout = target.get("timeout", opts.get("timeout", 1.0))
+    ival = target.get("interval", opts.get("interval", 1.0))
     tags = _build_tags(opts["name"], target)
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as skt:
@@ -183,21 +191,24 @@ def owd_udp_client(pub_q, target, **opts):
             while True:
                 ts = time.time_ns()
                 log.debug("[UDP OWD client] sending timestamp %s to %s", ts, target)
-                msg = MSG_FMT.format(
-                    seq=seq,
-                    source=opts["name"],
-                    timestamp=ts,
-                    tags=target.get("tags", []),
+                msg = bytes(
+                    MSG_FMT.format(
+                        seq=seq,
+                        source=opts["name"],
+                        timestamp=ts,
+                        tags=target.get("tags", []),
+                    ),
+                    "utf-8",
                 )
-                if target.get("size") and len(msg) < target["size"]:
-                    msg += "0" * (target["size"] - len(msg))
+                if size and len(msg) < size:
+                    msg += b"0" * (size - len(msg))
                 skt.sendto(
-                    bytes(msg, "utf-8"),
-                    (target["host"], target.get("port", opts["udp_port"])),
+                    msg,
+                    (target["host"], port),
                 )
-                incoming = select.select([skt], [], [], opts["timeout"])
+                incoming = select.select([skt], [], [], tout)
                 try:
-                    data, srv = incoming[0][0].recvfrom(128)
+                    data, srv = incoming[0][0].recvfrom(opts.get("max_size", MAX_SIZE))
                 except IndexError as ierr:
                     log.debug(
                         "[UDP OWD client] didn't receive a response from the UDP server %s",
@@ -217,6 +228,7 @@ def owd_udp_client(pub_q, target, **opts):
                         srv_seq,
                         srv,
                     )
+                    srv_seq = int(srv_seq)
                 except ValueError:
                     log.error(
                         "[UDP OWD client] Unable to unpack the computed UDP OWD from the server %s. Received: %s",
@@ -240,7 +252,7 @@ def owd_udp_client(pub_q, target, **opts):
                 log.debug("[UDP OWD client] Adding metric to the queue: %s", metric)
                 pub_q.put(metric)
                 seq = _next_seq(seq)
-                pause = opts["interval"] - (time.time_ns() - ts) / 1e9
+                pause = ival - (time.time_ns() - ts) / 1e9
                 if pause > 0:
                     log.debug(
                         "[UDP OWD client] Waiting %s seconds before sending the next probe to %s",
@@ -254,7 +266,7 @@ def owd_udp_client(pub_q, target, **opts):
             target,
             exc_info=True,
         )
-        time.sleep(0.1)
+        time.sleep(0.01)
         owd_udp_client(pub_q, target, **opts)
 
 
@@ -263,7 +275,7 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
     Receives the packet from the OWD client, extracts the timestamp and sends
     the metric to Datadog.
     """
-    log.info(
+    log.debug(
         "[TCP OWD server] Received connection from %s, you're welcome my friend", addr
     )
     prev_seq = -1
@@ -287,13 +299,14 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
                 send_ts,
                 seq,
                 src,
-                tags,
+                rtags,
             )
-            owd_ns = ts - send_ts
+            owd_ns = ts - int(send_ts)
+            seq = int(seq)
         except ValueError:
             log.error(
                 "[TCP OWD server] Unable to unpack the OWD data received from source %s, with tags %s: %s",
-                srv,
+                src,
                 tags,
                 data,
             )
@@ -316,7 +329,9 @@ def serve_owd_tcp(pub_q, conn, addr, **opts):
         if owd_ns < 0:
             owd_ns = 0
         owd_ms = owd_ns / 1e6
-        tags = [f"source:{src}", f"target:{opts['name']}"] + rtags
+        tags = [f"source:{src}", f"target:{opts['name']}"] + (
+            ast.literal_eval(rtags) if rtags else []
+        )
         metric = {
             "metric": "tcp.wan.owd",
             "points": [(time.time_ns(), owd_ms)],
@@ -382,13 +397,18 @@ def start_owd_tcp_clients(pub_q, **opts):
                         tgt,
                     )
                     threads.pop(tid)
-        time.sleep(0.1)
+        time.sleep(0.01)
 
 
 def owd_tcp_client(pub_q, target, **opts):
     """
     Connects to a server and sends one single message containing the timestamp.
     """
+    # TODO: use the timeout?
+    # tout = target.get("timeout", opts.get("timeout", 1.0))
+    size = target.get("size", opts.get("size"))
+    port = target.get("tcp_port", opts["tcp_port"])
+    ival = target.get("interval", opts.get("interval", 1.0))
     tags = _build_tags(opts["name"], target)
     try:
         with socket.socket(
@@ -396,25 +416,28 @@ def owd_tcp_client(pub_q, target, **opts):
             socket.SOCK_STREAM,
         ) as skt:
             try:
-                skt.connect((target["host"], target.get("port", opts["tcp_port"])))
+                skt.connect((target["host"], port))
             except Exception as err:
                 # log and fail loudly, forcing a process restart
                 log.error(
                     "[TCP OWD client] Unable to connect to %s:%d",
                     target["host"],
-                    target.get("port", opts["tcp_port"]),
+                    port,
                     exc_info=True,
                 )
                 raise err
             seq = 0
             while True:
                 ts = time.time_ns()
-                msg = MSG_FMT.format(
-                    seq=seq, timestamp=ts, source=opts["name"], tags=tags
+                msg = bytes(
+                    MSG_FMT.format(
+                        seq=seq, timestamp=ts, source=opts["name"], tags=target.get("tags", [])
+                    ),
+                    "utf-8",
                 )
-                if target.get("size") and len(msg) < target["size"]:
-                    msg += "0" * (target["size"] - len(msg))
-                skt.sendall(bytes(msg, "utf-8"))
+                if size and len(msg) < size:
+                    msg += b"0" * (size - len(msg))
+                skt.sendall(msg)
                 data = skt.recv(opts.get("max_size", MAX_SIZE))
                 rtt_ns = time.time_ns() - ts
                 rtt_ms = rtt_ns / 1e6
@@ -429,6 +452,7 @@ def owd_tcp_client(pub_q, target, **opts):
                         srv_src,
                         rtags,
                     )
+                    srv_seq = int(srv_seq)
                 except ValueError:
                     srv_seq = -1
                     log.error(
@@ -452,7 +476,7 @@ def owd_tcp_client(pub_q, target, **opts):
                 )
                 pub_q.put(rtt_metric)
                 seq = _next_seq(seq)
-                pause = opts["interval"] - (time.time_ns() - ts) / 1e9
+                pause = ival - (time.time_ns() - ts) / 1e9
                 if pause > 0:
                     log.debug(
                         "[TCP OWD client] Waiting %s seconds before sending the next probe",
@@ -465,7 +489,7 @@ def owd_tcp_client(pub_q, target, **opts):
             target,
             exc_info=True,
         )
-        time.sleep(0.1)
+        time.sleep(0.01)
         owd_tcp_client(pub_q, target, **opts)
 
 
@@ -474,26 +498,33 @@ def start_tcp_latency_pollers(pub_q, **opts):
     Dispatch pollers into their own threads.
     """
     log.debug("Starting the poller subprocess")
-    timeout = opts.get("timeout", 1.0)
+    threads = {}
     while True:
-        threads = []
         for tid, tgt in enumerate(opts["targets"]):
             ttype = tgt.get("type")
             if ttype and ttype != "tcp":
                 continue
-            t = threading.Thread(
-                target=tcp_latency_poll,
-                args=(
-                    pub_q,
-                    tgt,
-                ),
-                kwargs=opts,
-            )
-            t.start()
-            threads.append(t)
-        for t in threads:
-            t.join()
-        time.sleep(0.1)
+            if tid not in threads:
+                t = threading.Thread(
+                    target=tcp_latency_poll,
+                    args=(
+                        pub_q,
+                        tgt,
+                    ),
+                    kwargs=opts,
+                )
+                t.start()
+                threads[tid] = t
+            else:
+                # Thread exists but might not longer be active.
+                t = threads[tid]
+                if not t.is_alive():
+                    log.info(
+                        "Thread for TCP latency %s got interrupted, respawning",
+                        tgt,
+                    )
+                    threads.pop(tid)
+        time.sleep(0.01)
 
 
 def tcp_latency_poll(pub_q, target, **opts):
@@ -501,40 +532,35 @@ def tcp_latency_poll(pub_q, target, **opts):
     Execute the TCP latency runs against the given ip and port, and send the
     metrics to the publisher worker.
     """
+    port = target.get("tcp_port", opts["tcp_port"])
+    tout = target.get("timeout", opts.get("timeout", 1.0))
+    ival = target.get("interval", opts.get("interval", 1.0))
     log.debug(
-        "Polling target %s, running %d times with a %f gap",
+        "Polling target %s, timeout set at",
         target,
-        opts["runs"],
-        opts["timeout"],
+        tout,
     )
     tags = _build_tags(opts["name"], target)
-    metric_points = []
-    for _ in range(opts["runs"]):
-        # tcp_latency's measure_latency function doesn't return the results for
-        # the failed probes, e.g., if a batch of 10 runs has 2 failures, then
-        # results is a list of 8 results.
-        # Because of that, instead of using their runs, we execute our batch
-        # and record the results, ensuring we have record 0 for failed probes
-        # at the exact timestamp when it happened for accurate metrics.
+    while True:
         probe_time = time.time_ns()
-        results = tcp_latency.measure_latency(
+        res = tcp_latency.latency_point(
             host=target["host"],
-            port=target.get("port", opts["tcp_port"]),
-            runs=1,
-            timeout=opts["timeout"],
+            port=port,
+            timeout=tout,
         )
-        if not results:
-            log.error(
-                "Polling %s returned no results, the destination is likely unreachable",
+        if not res:
+            log.info(
+                "[TCP Latency] Polling %s returned no results, the destination is likely unreachable or timed out.",
                 target,
             )
-            results = [0]
-        metric_points.append((probe_time, results[0]))
-
-    metric = {
-        "metric": "tcp.wan.latency",
-        "points": metric_points,
-        "tags": tags,
-    }
-    log.debug("Adding TCP latency metric to the publisher queue: %s", metric)
-    pub_q.put(metric)
+            res = 0
+        metric = {
+            "metric": "tcp.wan.latency",
+            "points": [(probe_time, res * 1e6)],
+            "tags": tags,
+        }
+        log.debug("Adding TCP latency metric to the publisher queue: %s", metric)
+        pub_q.put(metric)
+        pause = ival - (time.time_ns() - probe_time) / 1e9
+        if pause > 0:
+            time.sleep(pause)
