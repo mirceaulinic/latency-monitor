@@ -42,7 +42,7 @@ class LatencyMonitor:
 
     def __init__(self, **args):
         self.args = Args(**args)
-        self.opts = {}  # TODO: need to find a way to inject the opts here
+        self.opts = {"targets": []}  # TODO: need to find a way to inject the opts here
         self.metrics_q = multiprocessing.Queue()
 
     def add_target(self, addr, **target_cfg):
