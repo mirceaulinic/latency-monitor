@@ -37,6 +37,6 @@ jobs:
       run: |
         uv run isort --check-only --diff .
 
-    - name: Lint with pylama
+    - name: Lint with pylint
       run: |
-        uv run pylama .
+        uv run pylint .

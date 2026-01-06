@@ -10,11 +10,14 @@ log = logging.getLogger(__name__)
 
 
 class Prometheus:
-    def __init__(self, **opts):
-        """ """
-        pass
+    """
+    Accumulate metrics and expose them when scraped.
+    """
 
-    def start(self, pub_q, **opts):
+    def __init__(self, **opts):
+        self.opts = opts
+
+    def start(self, pub_q):
         """
         Worker that constantly checks if there's a new metric into the queue, then
         adds it to the metrics accumulator for Prometheus to scrape it.
@@ -23,7 +26,7 @@ class Prometheus:
         # last_send = 0
         # ship_metrics = []
         log.debug("Starting Prometheus worker")
-        # send_interval = opts["metrics"].get("send_interval", 30)
+        # send_interval = self.opts["metrics"].get("send_interval", 30)
         while True:
             log.debug("[Prometheus] Waiting for a new metric")
             m = pub_q.get()

@@ -48,7 +48,7 @@ zeromq = [
 dev = [
     "black>=25.12.0",
     "isort>=7.0.0",
-    "pylama[toml]>=8.4.1",
+    "pylint>=4.0.4",
     "setuptools>=80.9.0",
 ]
 docs = [
@@ -62,7 +62,7 @@ package = true
 [tool.isort]
 profile = "black"
 
-[tool.pylama]
-linters = "mccabe,pycodestyle,pyflakes"
-ignore = "D203,C901,E203,W0401"
-skip = ".env/*,.venv/*"
+[tool.pylint]
+max-line-length = 120
+ignore-paths=".venv"
+disable="R0917,R0903,R0913,W0511,R0914,R0915,R0402,R0912,R0801"

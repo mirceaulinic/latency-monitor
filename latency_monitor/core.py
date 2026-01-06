@@ -39,14 +39,9 @@ def _max_size(opts):
     different configuration). If non of these are available, it'll default to
     the 1470 bytes.
     """
-    max_size = (
-        opts.get("max_size", 0)
-        or (
-            max([tgt.get("size", 0) for tgt in opts["targets"]])
-            if opts.get("targets")
-            else 0
-        )
-        or defaults.MAX_SIZE
+    max_size = opts.get("max_size", 0) or max(
+        map(lambda e: e.get("size", 0), opts.get("targets", [])),
+        default=defaults.MAX_SIZE,
     )
     log.debug("Setting receiving size to %d bytes", max_size)
     return max_size
@@ -58,7 +53,7 @@ def _build_tags(source, target):
     """
     return [
         f"source:{source}",
-        "target:{}".format(target.get("label", target["host"])),
+        f"target:{target.get('label', target['host'])}",
     ] + target.get("tags", [])
 
 
@@ -237,9 +232,7 @@ def owd_udp_client(metrics_q, target, **opts):
                         srv = None
                     rtt_ns = time.time_ns() - ts
                     try:
-                        srv_seq, srv_srv, owd_ns, srv_tags, padding = str(
-                            data, "utf-8"
-                        ).split("|")
+                        srv_seq, _, owd_ns, _, _ = str(data, "utf-8").split("|")
                         srv_seq = int(srv_seq)
                         log.debug(
                             "[UDP OWD client] received OWD timestamp %s (SEQ: %d) from %s",
@@ -374,8 +367,7 @@ def serve_owd_tcp(metrics_q, conn, addr, **opts):
                 seq,
             )
             owd_ns = 0
-        if owd_ns < 0:
-            owd_ns = 0
+        owd_ns = max(owd_ns, 0)
         tags = [f"source:{src}", f"target:{opts['name']}"] + (
             ast.literal_eval(rtags) if rtags else []
         )
@@ -512,9 +504,11 @@ def owd_tcp_client(metrics_q, target, **opts):
                     else:
                         rtt_ns = time.time_ns() - ts
                         try:
-                            srv_seq, srv_src, srv_ts, rtags, padding = str(
+                            srv_seq, srv_src, srv_ts, rtags, _ = str(
                                 data, "utf-8"
-                            ).split("|")
+                            ).split(
+                                "|"
+                            )  # pylint: disable=W0612
                             srv_seq = int(srv_seq)
                             log.debug(
                                 "[TCP OWD client] Received RTT timestamp %s (SEQ: %d) "
@@ -642,7 +636,7 @@ def tcp_latency_poll(metrics_q, target, **opts):
     tout = target.get("timeout", opts["timeout"])
     ival = target.get("interval", opts["interval"])
     log.debug(
-        "Polling target %s, timeout set at",
+        "Polling target %s, timeout set at: %f",
         target,
         tout,
     )

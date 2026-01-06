@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-""" """
+"""
+Latency Monitor
+===============
+"""
 
 import argparse
 import logging
@@ -37,12 +40,17 @@ def _start_proc(fun, *args, **opts):
     return server
 
 
-def _sigkill(signal, frame):
-    log.warning("Got terminated. Buh-bye now")
+def _sigkill(sig, frame):
+    log.warning("Got terminated (signal: %s). Buh-bye now", sig)
+    log.debug(frame)
     sys.exit(0)
 
 
 def parse_args(opts):
+    """
+    Parse CLI arguments based on the config opts read from the config file.
+    CLI overrides file.
+    """
     parser = argparse.ArgumentParser(
         description="Lightweight TCP and UDP latency monitoring tool",
         epilog=textwrap.dedent(
@@ -182,7 +190,10 @@ def parse_args(opts):
 
 
 def setup_logging(log_level, log_file=None):
-    # Ensure log directory exists
+    """
+    Sets the appropriate logging level and creates the directories when logging
+    to file.
+    """
     if log_file:
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
     numeric_level = getattr(logging, log_level.upper(), None)
@@ -198,6 +209,9 @@ def setup_logging(log_level, log_file=None):
 
 
 def load_config(cfg_file, cfg):
+    """
+    Load the config from the TOML file and return the config opts, as a dict.
+    """
     if not os.path.exists(cfg_file):
         log.critical("Unable to read the config file from %s", cfg_file)
         return cfg
@@ -250,7 +264,7 @@ def start(cli=True, args=None, metrics_q=None):
         args = parse_args(opts)
     elif args.config_file:
         opts = load_config(args.config_file, opts)
-    for key in opts.keys():
+    for key, _ in opts.items():
         if key != "metrics" and hasattr(args, key):
             opts[key] = getattr(args, key)
     setup_logging(args.log_level, log_file=args.log_file)
@@ -272,7 +286,7 @@ def start(cli=True, args=None, metrics_q=None):
     while True:
         if bkend and (not metrics_w or not metrics_w.is_alive()):
             log.info("Starting the metrics worker")
-            metrics_w = _start_proc(metrics.start, metrics_q, **opts)
+            metrics_w = _start_proc(metrics.start, metrics_q)  # pylint: disable=E0606
         if opts["udp"] and (not udp_server or not udp_server.is_alive()):
             log.info("Starting the UDP server")
             udp_server = _start_proc(start_udp_server, metrics_q, **opts)

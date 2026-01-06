@@ -26,23 +26,25 @@ log = logging.getLogger(__name__)
 
 
 class ZeroMQ:
+    """
+    Send metrics over ZeroMQ as soon as receiving them.
+    """
+
     def __init__(self, **opts):
-        """ """
-        self.address = opts["metrics"].get("address", "0.0.0.0")
-        self.port = opts["metrics"].get("port", 8002)
+        self.opts = opts
+        self.address = self.opts["metrics"].get("address", "0.0.0.0")
+        self.port = self.opts["metrics"].get("port", 8002)
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PUB)
         if ":" in self.address:
             self.socket.ipv6 = True
         try:
-            self.socket.bind(
-                "tcp://{addr}:{port}".format(addr=self.address, port=self.port)
-            )
+            self.socket.bind(f"tcp://{self.address}:{self.port}")
         except zmq.error.ZMQError as err:
             log.error(err, exc_info=True)
             raise
 
-    def start(self, pub_q, **opts):
+    def start(self, pub_q):  # pylint: disable=W0613
         """
         Worker that constantly checks if there's a new metric into the queue,
         and sends it over the ZeroMQ socket, from where you can pick it up.
