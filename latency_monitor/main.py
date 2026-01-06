@@ -48,11 +48,17 @@ def parse_args(opts):
         epilog=textwrap.dedent(
             """
             Examples:
-              Run with defaults:
-                latency-monitor -c latency.toml
+              Start in server mode, i.e., only listen to probes:
+                latency-monitor
 
               Enable debug logging:
                 latency-monitor -l DEBUG
+
+              Disable RTT and TCP latency probing:
+                latency-monitor -c latency.toml --no-tcp-latency --no-rtt
+
+              Rapid UDP probing (every millisecond) only OWD:
+                latency-monitor -c latency.toml --no-tcp --no-rtt -i 1
         """
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -100,15 +106,40 @@ def parse_args(opts):
 
     network_args = parser.add_argument_group("Network options")
     network_args.add_argument(
+        "-r",
+        "--rtt",
+        action=argparse.BooleanOptionalAction,
+        default=opts["rtt"],
+        help="Enable RTT (use --no-rtt to disable, i.e., only OWD measurements)",
+    )
+    network_args.add_argument(
         "-t",
+        "--tcp",
+        action=argparse.BooleanOptionalAction,
+        default=opts["tcp"],
+        help="Enable TCP monitoring for all probes (use --no-tcp to disable)",
+    )
+    network_args.add_argument(
+        "-u",
+        "--udp",
+        action=argparse.BooleanOptionalAction,
+        default=opts["udp"],
+        help="Enable UDP monitoring for all probes (use --no-udp to disable)",
+    )
+    network_args.add_argument(
+        "--tcp-latency",
+        action=argparse.BooleanOptionalAction,
+        default=opts["tcp_latency"],
+        help="Enable TCP latency monitoring without persistent connection "
+        "(use --no-tcp-latency to disable)",
+    )
+    network_args.add_argument(
         "--tcp-port",
         type=int,
         default=opts["tcp_port"],
         help=f"TCP port number to listen on. Default: {opts['tcp_port']}",
     )
-
     network_args.add_argument(
-        "-u",
         "--udp-port",
         type=int,
         default=opts["udp_port"],
@@ -138,7 +169,6 @@ def parse_args(opts):
         default=opts["timeout"],
         help=f"Timeout in seconds. Default: {opts['timeout']} seconds",
     )
-
     runtime_args.add_argument(
         "-i",
         "--interval",
@@ -186,6 +216,9 @@ def start(cli=True, args=None, metrics_q=None):
     for the targets.
     """
     opts = {
+        "rtt": defaults.RTT,
+        "tcp": defaults.TCP,
+        "udp": defaults.UDP,
         "name": defaults.NAME,
         "timeout": defaults.TIMEOUT,
         "max_seq": defaults.MAX_SEQ,
@@ -196,6 +229,7 @@ def start(cli=True, args=None, metrics_q=None):
         "tcp_port": defaults.TCP_PORT,
         "udp_port": defaults.UDP_PORT,
         "log_level": defaults.LOG_LEVEL,
+        "tcp_latency": defaults.TCP_LATENCY,
     }
     signal.signal(signal.SIGTERM, _sigkill)
     signal.signal(signal.SIGINT, _sigkill)
@@ -216,6 +250,9 @@ def start(cli=True, args=None, metrics_q=None):
         args = parse_args(opts)
     elif args.config_file:
         opts = load_config(args.config_file, opts)
+    for key in opts.keys():
+        if key != "metrics" and hasattr(args, key):
+            opts[key] = getattr(args, key)
     setup_logging(args.log_level, log_file=args.log_file)
     bkend = opts.get("metrics", {}).get("backend")
     if bkend and bkend not in __metrics__:
@@ -236,20 +273,24 @@ def start(cli=True, args=None, metrics_q=None):
         if bkend and (not metrics_w or not metrics_w.is_alive()):
             log.info("Starting the metrics worker")
             metrics_w = _start_proc(metrics.start, metrics_q, **opts)
-        if not udp_server or not udp_server.is_alive():
+        if opts["udp"] and (not udp_server or not udp_server.is_alive()):
             log.info("Starting the UDP server")
             udp_server = _start_proc(start_udp_server, metrics_q, **opts)
-        if not tcp_server or not tcp_server.is_alive():
+        if opts["tcp"] and (not tcp_server or not tcp_server.is_alive()):
             log.info("Starting the TCP server")
             tcp_server = _start_proc(start_tcp_server, metrics_q, **opts)
         if opts.get("targets"):
-            if not poller or not poller.is_alive():
+            if (
+                opts["tcp"]
+                and opts["tcp_latency"]
+                and (not poller or not poller.is_alive())
+            ):
                 log.info("Starting the TCP latency process")
                 poller = _start_proc(start_tcp_latency_pollers, metrics_q, **opts)
-            if not owd_udp_ps or not owd_udp_ps.is_alive():
+            if opts["udp"] and (not owd_udp_ps or not owd_udp_ps.is_alive()):
                 log.info("Starting the UDP OWD process for the targets")
                 owd_udp_ps = _start_proc(start_owd_udp_clients, metrics_q, **opts)
-            if not owd_tcp_ps or not owd_tcp_ps.is_alive():
+            if opts["tcp"] and (not owd_tcp_ps or not owd_tcp_ps.is_alive()):
                 log.info("Starting the TCP OWD process for the targets")
                 owd_tcp_ps = _start_proc(start_owd_tcp_clients, metrics_q, **opts)
         time.sleep(0.1)

@@ -7,6 +7,10 @@ import json
 import os
 import socket
 
+RTT = True
+TCP = True
+UDP = True
+TCP_LATENCY = True
 NAME = socket.gethostname()
 CFG_FILE = os.path.join(os.getcwd(), "latency.toml")
 TCP_PORT = 8000
