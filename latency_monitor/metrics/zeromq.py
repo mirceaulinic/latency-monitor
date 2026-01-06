@@ -44,7 +44,7 @@ class ZeroMQ:
             log.error(err, exc_info=True)
             raise
 
-    def start(self, pub_q):  # pylint: disable=W0613
+    def start(self, pub_q):
         """
         Worker that constantly checks if there's a new metric into the queue,
         and sends it over the ZeroMQ socket, from where you can pick it up.

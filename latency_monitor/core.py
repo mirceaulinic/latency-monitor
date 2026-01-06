@@ -506,9 +506,7 @@ def owd_tcp_client(metrics_q, target, **opts):
                         try:
                             srv_seq, srv_src, srv_ts, rtags, _ = str(
                                 data, "utf-8"
-                            ).split(
-                                "|"
-                            )  # pylint: disable=W0612
+                            ).split("|")
                             srv_seq = int(srv_seq)
                             log.debug(
                                 "[TCP OWD client] Received RTT timestamp %s (SEQ: %d) "

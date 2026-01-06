@@ -61,7 +61,7 @@ package = true
 [tool.isort]
 profile = "black"
 
-[tool.pylint]
+[tool.pylint.MASTER]
 max-line-length = 120
-ignore-paths=".venv"
+ignore-paths = [".venv"]
 disable="R0917,R0903,R0913,W0511,R0914,R0915,R0402,R0912,R0801"
