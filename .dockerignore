@@ -1,0 +1,11 @@
+.git
+.venv
+*.yml
+*.md
+*.png
+*.ini
+*.egg-info
+dist
+docs
+examples
+tests
