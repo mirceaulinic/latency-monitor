@@ -245,12 +245,15 @@ Contributions are welcome! Please:
 # Install development dependencies
 pip install -e ".[dev]"
 
+# Or using uv
+uv sync --locked --dev
+
 # Run code formatting
 black .
 isort .
 
 # Run linters
-pylama .
+pylint .
 ```
 
 ## License

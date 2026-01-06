@@ -15,18 +15,21 @@ log = logging.getLogger(__name__)
 
 
 class Log:
+    """
+    Metrics backend that simply logs metrics as they're being produced.
+    """
+
     def __init__(self, **opts):
-        """ """
-        log_level = opts["metrics"].get("level", "warning")
+        self.opts = opts
+        log_level = self.opts["metrics"].get("level", "warning")
         if log_level and hasattr(log, log_level):
             self.fun = getattr(log, log_level)
         else:
             self.fun = log.warning
-        fmt = opts["metrics"].get("format", "json")
+        fmt = self.opts["metrics"].get("format", "json")
         self.fmt = FMT_MAP.get(fmt)
 
-    def start(self, pub_q, **opts):
-        """ """
+    def start(self, pub_q):  # pylint: disable=C0116
         log.debug("Starting Log publisher")
         while True:
             log.debug("[Log Publisher] Waiting for a new metric")

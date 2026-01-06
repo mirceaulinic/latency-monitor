@@ -23,10 +23,14 @@ log = logging.getLogger(__name__)
 
 
 class Datadog:
+    """
+    Accumulate metrics and ship them at specific intervals.
+    """
+
     def __init__(self, **opts):
-        """ """
-        dd_site = os.environ.get("DD_SITE", opts["metrics"]["site"])
-        api_key = os.environ.get("DD_API_KEY", opts["metrics"]["api_key"])
+        self.opts = opts
+        dd_site = os.environ.get("DD_SITE", self.opts["metrics"]["site"])
+        api_key = os.environ.get("DD_API_KEY", self.opts["metrics"]["api_key"])
         self.cfg = Configuration()
         self.cfg.server_variables["site"] = dd_site
         if api_key:
@@ -44,7 +48,7 @@ class Datadog:
                 response = api_instance.submit_metrics(body=metric)
                 log.debug(response)
 
-    def start(self, metrics_q, **opts):
+    def start(self, metrics_q):
         """
         Worker that constantly checks if there's a new metric into the queue, then
         adds it to the metrics list or ships to Datadog.
@@ -53,7 +57,7 @@ class Datadog:
         last_send = 0
         ship_metrics = []
         log.debug("Starting Datadog worker")
-        send_interval = opts["metrics"].get("send_interval", 30)
+        send_interval = self.opts["metrics"].get("send_interval", 30)
         while True:
             log.debug("[Datadog] Waiting for a new metric")
             m = metrics_q.get()
@@ -99,7 +103,7 @@ class Datadog:
                     self._dd_ship(ship_metrics)
                     ship_metrics = []
                     last_send = time.time()
-                except Exception:
+                except Exception:  # pylint: disable=W0718
                     # Catching generic exception, let's not crash the worker
                     # because of some random failure such as Datadog API down.
                     log.error(
