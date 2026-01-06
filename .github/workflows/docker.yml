@@ -10,6 +10,7 @@ jobs:
   push_to_docker:
     name: Push Docker image to multiple registries
     runs-on: ubuntu-latest
+    environment: docker
     permissions:
       packages: write
       contents: read
