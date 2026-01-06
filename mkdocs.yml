@@ -6,3 +6,9 @@ theme:
   name: dracula
   logo: images/logo_small.png
   favicon: images/favicon.png
+nav:
+  - Home: index.md
+  - Installation: install.md
+  - Usage: usage.md
+  - Docker: docker.md
+  - Architecture: arch.md
