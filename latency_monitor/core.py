@@ -199,6 +199,7 @@ def owd_udp_client(metrics_q, target, **opts):
     tout = target.get("timeout", opts["timeout"])
     ival = target.get("interval", opts["interval"])
     max_lost = target.get("max_lost", opts["max_lost"])
+    rtt = target.get("rtt", opts["rtt"])
     tags = _build_tags(opts["name"], target)
     max_size = _max_size(opts)
     lost = 0
@@ -223,55 +224,58 @@ def owd_udp_client(metrics_q, target, **opts):
                     msg,
                     (target["host"], port),
                 )
-                incoming = select.select([skt], [], [], tout)
-                try:
-                    data, srv = incoming[0][0].recvfrom(max_size)
-                except IndexError:
+                if rtt:
+                    incoming = select.select([skt], [], [], tout)
+                    try:
+                        data, srv = incoming[0][0].recvfrom(max_size)
+                    except IndexError:
+                        log.debug(
+                            "[UDP OWD client] didn't receive a response from the UDP server %s",
+                            target,
+                        )
+                        data = b""
+                        srv = None
+                    rtt_ns = time.time_ns() - ts
+                    try:
+                        srv_seq, srv_srv, owd_ns, srv_tags, padding = str(
+                            data, "utf-8"
+                        ).split("|")
+                        srv_seq = int(srv_seq)
+                        log.debug(
+                            "[UDP OWD client] received OWD timestamp %s (SEQ: %d) from %s",
+                            owd_ns,
+                            srv_seq,
+                            srv,
+                        )
+                    except ValueError:
+                        log.error(
+                            "[UDP OWD client] Unable to unpack the computed UDP OWD "
+                            "from the server %s. Received: %s",
+                            target,
+                            data,
+                        )
+                        owd_ns = 0
+                        srv_seq = -1
+                    if seq != srv_seq:
+                        log.info(
+                            "[UDP OWD client] Ignoring timestamp as SEQ doesn't "
+                            "match: expected %d, got %d",
+                            seq,
+                            srv_seq,
+                        )
+                        rtt_ns = 0
+                        lost += 1
+                    else:
+                        lost = 0
+                    metric = {
+                        "metric": "udp.wan.rtt",
+                        "points": [(time.time_ns(), rtt_ns)],
+                        "tags": tags,
+                    }
                     log.debug(
-                        "[UDP OWD client] didn't receive a response from the UDP server %s",
-                        target,
+                        "[UDP OWD client] Adding RTT metric to the queue: %s", metric
                     )
-                    data = b""
-                    srv = None
-                rtt_ns = time.time_ns() - ts
-                try:
-                    srv_seq, srv_srv, owd_ns, srv_tags, padding = str(
-                        data, "utf-8"
-                    ).split("|")
-                    srv_seq = int(srv_seq)
-                    log.debug(
-                        "[UDP OWD client] received OWD timestamp %s (SEQ: %d) from %s",
-                        owd_ns,
-                        srv_seq,
-                        srv,
-                    )
-                except ValueError:
-                    log.error(
-                        "[UDP OWD client] Unable to unpack the computed UDP OWD "
-                        "from the server %s. Received: %s",
-                        target,
-                        data,
-                    )
-                    owd_ns = 0
-                    srv_seq = -1
-                if seq != srv_seq:
-                    log.info(
-                        "[UDP OWD client] Ignoring timestamp as SEQ doesn't "
-                        "match: expected %d, got %d",
-                        seq,
-                        srv_seq,
-                    )
-                    rtt_ns = 0
-                    lost += 1
-                else:
-                    lost = 0
-                metric = {
-                    "metric": "udp.wan.rtt",
-                    "points": [(time.time_ns(), rtt_ns)],
-                    "tags": tags,
-                }
-                log.debug("[UDP OWD client] Adding metric to the queue: %s", metric)
-                metrics_q.put(metric)
+                    metrics_q.put(metric)
                 seq = _next_seq(seq)
                 pause = ival - (time.time_ns() - ts) / 1e6
                 if pause > 0:
@@ -452,6 +456,7 @@ def owd_tcp_client(metrics_q, target, **opts):
     port = target.get("tcp_port", opts["tcp_port"])
     ival = target.get("interval", opts["interval"])
     max_lost = target.get("max_lost", opts["max_lost"])
+    rtt = target.get("rtt", opts["rtt"])
     tags = _build_tags(opts["name"], target)
     max_size = _max_size(opts)
     lost = 0
@@ -493,59 +498,60 @@ def owd_tcp_client(metrics_q, target, **opts):
                     target.get("tags", []),
                 )
                 skt.sendall(msg)
-                data = _read_tcp(skt, tout, max_size)
-                if not data:
-                    log.warning(
-                        "[TCP OWD client] didn't receive a response within %d "
-                        "seconds from the TCP server: %s",
-                        tout,
-                        target,
-                    )
-                    rtt_ns = 0
-                    lost += 1
-                else:
-                    rtt_ns = time.time_ns() - ts
-                    try:
-                        srv_seq, srv_src, srv_ts, rtags, padding = str(
-                            data, "utf-8"
-                        ).split("|")
-                        srv_seq = int(srv_seq)
-                        log.debug(
-                            "[TCP OWD client] Received RTT timestamp %s (SEQ: %d) "
-                            "from %s with tags: %s",
-                            srv_ts,
-                            srv_seq,
-                            srv_src,
-                            rtags,
-                        )
-                    except ValueError:
-                        srv_seq = -1
-                        log.error(
-                            "[TCP OWD client] Unable to unpack the computed OWD "
-                            "from the server: %s",
-                            data,
-                        )
-                    if srv_seq != seq:
-                        rtt_ns = 0
+                if rtt:
+                    data = _read_tcp(skt, tout, max_size)
+                    if not data:
                         log.warning(
-                            "[TCP OWD client] Ignoring RTT packet, the seq "
-                            "doesn't match (%d vs %d)",
-                            seq,
-                            srv_seq,
+                            "[TCP OWD client] didn't receive a response within %d "
+                            "seconds from the TCP server: %s",
+                            tout,
+                            target,
                         )
+                        rtt_ns = 0
                         lost += 1
                     else:
-                        lost = 0
-                rtt_metric = {
-                    "metric": "tcp.wan.rtt",
-                    "points": [(time.time_ns(), rtt_ns)],
-                    "tags": tags,
-                }
-                log.debug(
-                    "[TCP OWD client] Adding RTT metric to the metrics queue: %s",
-                    rtt_metric,
-                )
-                metrics_q.put(rtt_metric)
+                        rtt_ns = time.time_ns() - ts
+                        try:
+                            srv_seq, srv_src, srv_ts, rtags, padding = str(
+                                data, "utf-8"
+                            ).split("|")
+                            srv_seq = int(srv_seq)
+                            log.debug(
+                                "[TCP OWD client] Received RTT timestamp %s (SEQ: %d) "
+                                "from %s with tags: %s",
+                                srv_ts,
+                                srv_seq,
+                                srv_src,
+                                rtags,
+                            )
+                        except ValueError:
+                            srv_seq = -1
+                            log.error(
+                                "[TCP OWD client] Unable to unpack the computed OWD "
+                                "from the server: %s",
+                                data,
+                            )
+                        if srv_seq != seq:
+                            rtt_ns = 0
+                            log.warning(
+                                "[TCP OWD client] Ignoring RTT packet, the seq "
+                                "doesn't match (%d vs %d)",
+                                seq,
+                                srv_seq,
+                            )
+                            lost += 1
+                        else:
+                            lost = 0
+                    rtt_metric = {
+                        "metric": "tcp.wan.rtt",
+                        "points": [(time.time_ns(), rtt_ns)],
+                        "tags": tags,
+                    }
+                    log.debug(
+                        "[TCP OWD client] Adding RTT metric to the metrics queue: %s",
+                        rtt_metric,
+                    )
+                    metrics_q.put(rtt_metric)
                 seq = _next_seq(seq)
                 pause = ival - (time.time_ns() - ts) / 1e6
                 if pause > 0:
@@ -575,7 +581,9 @@ def start_tcp_latency_pollers(metrics_q, **opts):
     while True:
         for tid, tgt in enumerate(opts["targets"]):
             ttype = tgt.get("type")
-            if ttype and ttype != "tcp":
+            if (ttype and ttype != "tcp") or not tgt.get("tcp_latency", True):
+                # Won't start a polling thread when the probe type is not TCP,
+                # or when TCP latency probing is disabled.
                 continue
             if tid not in threads:
                 t = threading.Thread(
