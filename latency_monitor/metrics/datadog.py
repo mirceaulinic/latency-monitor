@@ -5,7 +5,8 @@ Datadog metrics backend
 """
 import logging
 import os
-import time
+
+from latency_monitor.metrics.accumulator import Accumulator
 
 try:
     from datadog_api_client import ApiClient, Configuration
@@ -22,13 +23,13 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 
-class Datadog:
+class Datadog(Accumulator):
     """
     Accumulate metrics and ship them at specific intervals.
     """
 
     def __init__(self, **opts):
-        self.opts = opts
+        super().__init__(**opts)
         dd_site = os.environ.get("DD_SITE", self.opts["metrics"]["site"])
         api_key = os.environ.get("DD_API_KEY", self.opts["metrics"]["api_key"])
         self.cfg = Configuration()
@@ -48,65 +49,29 @@ class Datadog:
                 response = api_instance.submit_metrics(body=metric)
                 log.debug(response)
 
-    def start(self, metrics_q):
+    def _push_metrics(self, metrics):
         """
-        Worker that constantly checks if there's a new metric into the queue, then
-        adds it to the metrics list or ships to Datadog.
+        Build the Datadog metrics objects and send them.
         """
-        metrics = []
-        last_send = 0
         ship_metrics = []
-        log.debug("Starting Datadog worker")
-        send_interval = self.opts["metrics"].get("send_interval", 30)
-        while True:
-            log.debug("[Datadog] Waiting for a new metric")
-            m = metrics_q.get()
-            log.debug("[Datadog] Picked metric from the queue: %s", m)
-            found = False
-            for metric in metrics:
-                if metric["metric"] == m["metric"] and set(metric["tags"]) == set(
-                    m["tags"]
-                ):
-                    metric["points"].extend(m["points"])
-                    log.debug("[Datadog] Known metric, adding the data points")
-                    found = True
-            if not found:
-                log.debug(
-                    "[Datadog] This is a new metric, adding it to the accumulator"
-                )
-                metrics.append(m)
-            if time.time() - last_send > send_interval:
-                for metric in metrics:
-                    dd_metric = MetricPayload(
-                        series=[
-                            MetricSeries(
-                                metric=metric["metric"],
-                                type=MetricIntakeType.GAUGE,
-                                points=[
-                                    # datapoints are by default in nanoseconds,
-                                    # and Datadog needs seconds, int values.
-                                    # TODO: the values are assumed ms by default,
-                                    # we may change that to us or something else.
-                                    MetricPoint(
-                                        timestamp=int(p[0] / 1e9), value=p[1] / 1e6
-                                    )
-                                    for p in metric["points"]
-                                ],
-                                tags=metric["tags"],
-                            )
-                        ]
+        for metric in metrics:
+            dd_metric = MetricPayload(
+                series=[
+                    MetricSeries(
+                        metric=metric["metric"],
+                        type=MetricIntakeType.GAUGE,
+                        points=[
+                            # datapoints are by default in nanoseconds,
+                            # and Datadog needs seconds, int values.
+                            # TODO: the values are assumed ms by default,
+                            # we may change that to us or something else.
+                            MetricPoint(timestamp=int(p[0] / 1e9), value=p[1] / 1e6)
+                            for p in metric["points"]
+                        ],
+                        tags=metric["tags"],
                     )
-                    log.debug("[Datadog] Adding metric to be shipped: %s", dd_metric)
-                    ship_metrics.append(dd_metric)
-                metrics = []
-                try:
-                    self._dd_ship(ship_metrics)
-                    ship_metrics = []
-                    last_send = time.time()
-                except Exception:  # pylint: disable=W0718
-                    # Catching generic exception, let's not crash the worker
-                    # because of some random failure such as Datadog API down.
-                    log.error(
-                        "[Datadog] Unable to send metrics, will try again later",
-                        exc_info=True,
-                    )
+                ]
+            )
+            log.debug("[Datadog] Adding metric to be shipped: %s", dd_metric)
+            ship_metrics.append(dd_metric)
+        self._dd_ship(ship_metrics)
