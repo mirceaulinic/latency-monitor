@@ -12,6 +12,10 @@ TCP and UDP latency monitoring tool, with pluggable interface for publishing met
 - **UDP Latency Monitoring**: Measure UDP one-way and round-trip time to target hosts.
 - **Pluggable Metrics**: Flexible interface for publishing metrics to various backends
 - **Configurable**: Easy configuration for monitoring targets and intervals, 
+- **Precision**: Measurements are collected in nanoseconds, and probes can be executed every millisecond. This is ideal
+  for capturing micro-bursts, or rapidly changing environments.
+- **Stable**: TCP measurements table place over established connections to reduce the impact of firewalls or other
+  intermediary systems. Each probing pair is one flow, maintained while the link is being monitored.
 - **Lightweight**: Minimal resource footprint for continuous monitoring, so it can be executed on any operating system 
   (where Python is available).
 
@@ -30,7 +34,7 @@ For development installation:
 ```bash
 git clone https://github.com/mirceaulinic/latency-monitor.git
 cd latency-monitor
-uv sync --dev
+uv sync --locked --dev --all-extras
 ```
 
 
@@ -149,8 +153,8 @@ Network options:
   -u, --udp, --no-udp   Enable UDP monitoring for all probes (use --no-udp to disable)
   --tcp-latency, --no-tcp-latency
                         Enable TCP latency monitoring without persistent connection (use --no-tcp-latency to disable)
-  --tcp-port TCP_PORT   TCP port number to listen on. Default: 5000
-  --udp-port UDP_PORT   UDP port number to listen on. Default: 5001
+  --tcp-port TCP_PORT   TCP port number to listen on. Default: 8000
+  --udp-port UDP_PORT   UDP port number to listen on. Default: 8001
   -s, --max-size MAX_SIZE
                         Packet max size (in bytes). Default: 1470 bytes
   -x, --max-lost MAX_LOST
