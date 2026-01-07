@@ -185,7 +185,7 @@ Examples:
 The tool supports pluggable metrics backends:
 
 - Datadog
-- Prometheus
+- Pushgateway
 - Cli
 - Log
 
