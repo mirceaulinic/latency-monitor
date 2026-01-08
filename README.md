@@ -14,14 +14,12 @@ TCP and UDP latency monitoring tool, with pluggable interface for publishing met
 - **Configurable**: Easy configuration for monitoring targets and intervals, 
 - **Precision**: Measurements are collected in nanoseconds, and probes can be executed every millisecond. This is ideal
   for capturing micro-bursts, or rapidly changing environments.
-- **Stable**: TCP measurements table place over established connections to reduce the impact of firewalls or other
+- **Stable**: TCP measurements takes place over established connections to reduce the impact of firewalls or other
   intermediary systems. Each probing pair is one flow, maintained while the link is being monitored.
 - **Lightweight**: Minimal resource footprint for continuous monitoring, so it can be executed on any operating system 
   (where Python is available).
 
 ## Installation
-
-> **Note**: Package is not yet published to PyPI. This section describes future installation once the package is available.
 
 Install from PyPI:
 
@@ -82,8 +80,10 @@ host = "lm.example.com"
 timeout = 2
 
 [metrics]
-backend = "prometheus"
-port = 9090
+backend = "clickhouse"
+host = "click.example.com"
+username = "super"
+password = "secure"
 ```
 
 For every target you want to monitor, you can define a configuration block, with the following options:
@@ -111,7 +111,6 @@ The default values are:
 
 * TCP port: 8000
 * UDP port: 8001
-* Size: 1470 (bytes)
 * Interval: 1000 (milliseconds)
 * Timeout: 1 (second)
 * Type: by default both TCP and UDP, unless you only want one
@@ -127,7 +126,7 @@ The global settings can also be set from the command line, see ``--help``:
 
 ```bash
 $ latency-monitor --help
-usage: latency-monitor [-h] [-c CONFIG_FILE] [-n NAME] [-m {cli,log,zeromq,datadog,prometheus}] [-l 
+usage: latency-monitor [-h] [-c CONFIG_FILE] [-n NAME] [-m {cli,log,zeromq,datadog,pushgateway,clickhouse}] [-l 
 {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-f LOG_FILE] [-r | --rtt | --no-rtt] [-t | --tcp | --no-tcp] [-u | --udp 
 | --no-udp] [--tcp-latency | --no-tcp-latency] [--tcp-port TCP_PORT] [--udp-port UDP_PORT] [-s MAX_SIZE] [-x MAX_LOST] [-T TIMEOUT] [-i MSECONDS]
 
@@ -138,7 +137,7 @@ options:
   -c, --config-file CONFIG_FILE
                         Path to configuration file
   -n, --name NAME       The local system name or label. Default: your-machine-name
-  -m, --metrics {cli,log,zeromq,datadog,prometheus}
+  -m, --metrics {cli,log,zeromq,datadog,pushgateway,clickhouse}
                         The metrics backend to use (default: CLI)
 
 Logging options:
@@ -182,14 +181,18 @@ Examples:
 
 ## Metrics Publishing
 
-The tool supports pluggable metrics backends:
+The tool supports pluggable metrics backends. Currently the following are available:
 
 - Datadog
+- ZeroMQ
+- Clickhouse
 - Pushgateway
 - Cli
 - Log
 
 The last two are probably more important for debugging purposes, than actual production use.
+
+It's very easy to add a new integration, so if you'd like to send your data elsewhere, feel free to open a PR.
 
 ## Usage
 
