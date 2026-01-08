@@ -21,12 +21,14 @@ TCP and UDP latency monitoring tool, with pluggable interface for publishing met
 
 ## Installation
 
+> [!WARNING]
+> This package requires Python 3.11 or newer.
+
 Install from PyPI:
 
 ```bash
 pip install latency-monitor
 ```
-
 For development installation:
 
 ```bash
@@ -34,7 +36,6 @@ git clone https://github.com/mirceaulinic/latency-monitor.git
 cd latency-monitor
 uv sync --locked --dev --all-extras
 ```
-
 
 > [!IMPORTANT]
 > By default, the project doesn't have any third-party dependencies. However, depending on the metrics backend you want
