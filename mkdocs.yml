@@ -6,9 +6,24 @@ theme:
   name: dracula
   logo: images/logo_small.png
   favicon: images/favicon.png
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+plugins:
+  - glightbox
 nav:
   - Home: index.md
   - Installation: install.md
   - Usage: usage.md
   - Docker: docker.md
   - Architecture: arch.md
+  - Metrics Backends:
+    - Cli: metrics/cli.md
+    - Log: metrics/log.md
+    - ZeroMQ: metrics/zeromq.md
+    - Datadog: metrics/datadog.md
+    - Clickhouse: metrics/clickhouse.md
+    - Pushgateway: metrics/pushgateway.md
