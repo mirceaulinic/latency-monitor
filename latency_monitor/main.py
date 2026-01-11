@@ -109,6 +109,7 @@ def parse_args(opts):
         "-f",
         "--log-file",
         type=str,
+        default=opts["log_file"],
         help="Path to log file (if omitted, logs to stdout)",
     )
 
@@ -194,17 +195,17 @@ def setup_logging(log_level, log_file=None):
     Sets the appropriate logging level and creates the directories when logging
     to file.
     """
+    handlers = [logging.StreamHandler()]
     if log_file:
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        handlers.append(logging.FileHandler(log_file))
     numeric_level = getattr(logging, log_level.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError(f"Invalid log level: {log_level}")
     logging.basicConfig(
         level=numeric_level,
         format=defaults.LOG_FORMAT,
-        handlers=[
-            logging.FileHandler(log_file) if log_file else logging.StreamHandler(),
-        ],
+        handlers=handlers,
     )
 
 
@@ -243,6 +244,7 @@ def start(cli=True, args=None, metrics_q=None):
         "tcp_port": defaults.TCP_PORT,
         "udp_port": defaults.UDP_PORT,
         "log_level": defaults.LOG_LEVEL,
+        "log_file": None,
         "tcp_latency": defaults.TCP_LATENCY,
     }
     signal.signal(signal.SIGTERM, _sigkill)
