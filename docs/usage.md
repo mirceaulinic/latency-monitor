@@ -134,7 +134,7 @@ udp_port = 12346
 
 ### ``type``
 
-The probe type, chose between ``tcp`` and ``udp``, if you only want one. If this value is not provided, then both TCP 
+The probe type, choose between ``tcp`` and ``udp``, if you only want one. If this value is not provided, then both TCP 
 and UDP monitoring are enabled, by default.
 
 Configuration example:
