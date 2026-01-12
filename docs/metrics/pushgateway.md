@@ -22,5 +22,5 @@ Configuration example:
 [metrics]
 backend = "pushgateway"
 gateway = "https://pushgw.example.com"
-send_inteval = 60
+send_interval = 60
 ```
