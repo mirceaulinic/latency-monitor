@@ -57,7 +57,7 @@ side, then the thread or subprocess is being re-spawned trying to re-establish t
 
 The messages exchanged between the clients and the servers have the following format:
 
-``<SEQ>|<source>|<timestamp>|<tags>|<pading>``, where:
+``<SEQ>|<source>|<timestamp>|<tags>|<padding>``, where:
 
 - ``SEQ``: the packet sequence counter, incremented on every packet sent. If the received SEQ differs from the expected
   SEQ, then the packet is considered lost. When 10 (by default, customisable) consecutive packets are flagged as lost,
