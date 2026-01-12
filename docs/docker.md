@@ -7,10 +7,10 @@ There are Docker images published on the following events:
 
 On PR merge, the Docker image will be tagged using the targeted branch name, i.e., ``main`` or ``develop``.
 
-When a new version is released, there will be a git tag being pushed to the repository, and the Dockage image will 
+When a new version is released, there will be a git tag being pushed to the repository, and the Docker image will 
 inherit that tag, e.g., ``v0.0.1``.
 
-The Dockage images are available at both Docker Hub and GitHub Container Registry, whichever you prefer:
+The Docker images are available at both Docker Hub and GitHub Container Registry, whichever you prefer:
 
 - [https://hub.docker.com/r/mirceaulinic/latency-monitor/tags](https://hub.docker.com/r/mirceaulinic/latency-monitor/tags)
 - [https://github.com/mirceaulinic/latency-monitor/pkgs/container/latency-monitor](https://github.com/mirceaulinic/latency-monitor/pkgs/container/latency-monitor)
