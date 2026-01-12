@@ -11,7 +11,7 @@ pluggable interface for metrics publishing.
 - **Configurable**: Easy configuration for monitoring targets and intervals.
 - **Precision**: Measurements are collected in nanoseconds, and probes can be executed every millisecond. This is ideal
   for capturing micro-bursts, or rapidly changing environments.
-- **Stable**: TCP measurements takes place over established connections to reduce the impact of firewalls or other
+- **Stable**: TCP measurements take place over established connections to reduce the impact of firewalls or other
   intermediary systems. Each probing pair is one flow, maintained while the link is being monitored.
 - **Lightweight**: Minimal resource footprint for continuous monitoring, so it can be executed on any operating system 
   (where Python is available).
