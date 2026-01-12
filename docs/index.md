@@ -37,7 +37,7 @@ The following backends are currently available for publishing metrics:
 
 - [Cli](metrics/cli.md)
 - [Log](metrics/log.md)
-- [Clickhouse](metrics/clickhouse.md)
+- [ClickHouse](metrics/clickhouse.md)
 - [Datadog](metrics/datadog.md)
 - [Pushgateway](metrics/pushgateway.md)
 - [ZeroMQ](metrics/zeromq.md)

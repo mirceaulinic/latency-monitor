@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Clickhouse metrics backend
+ClickHouse metrics backend
 ==========================
 """
 import datetime
@@ -18,7 +18,7 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 
-class Clickhouse(Accumulator):
+class ClickHouse(Accumulator):
     """
     Accumulate metrics and ship them at specific intervals.
     """
@@ -48,5 +48,5 @@ class Clickhouse(Accumulator):
             tags = dict(map(lambda t: t.split(":"), metric["tags"]))
             for p in metric["points"]:
                 rows.append([metric["metric"], p[0], p[1], tags, inserted_at])
-        log.debug("[Clickhouse] Inserting rows")
+        log.debug("[ClickHouse] Inserting rows")
         self.client.insert(self.table, rows, column_names=self.columns)
