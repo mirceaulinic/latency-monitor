@@ -16,7 +16,7 @@ backend = "log"
 level = "WARNING"
 ```
 
-The execute referencing the configuration file:
+Then execute, referencing the configuration file:
 
 ```bash
 $ latency-monitor -l /path/to/latency.toml
