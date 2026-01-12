@@ -197,7 +197,9 @@ def setup_logging(log_level, log_file=None):
     """
     handlers = [logging.StreamHandler()]
     if log_file:
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
         handlers.append(logging.FileHandler(log_file))
     numeric_level = getattr(logging, log_level.upper(), None)
     if not isinstance(numeric_level, int):
