@@ -1,7 +1,7 @@
 # Latency Monitor
 
 ``latency-monitor`` is a lightweight tool for high precision and granularity monitoring over TCP and UDP, with 
-pluggable interface for metrics publishing.
+a pluggable interface for metrics publishing.
 
 ## Features
 
