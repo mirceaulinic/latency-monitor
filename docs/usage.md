@@ -147,8 +147,8 @@ type = "udp"
 
 ### ``tags``
 
-A list of additional tags (or labels) applied to the metrics. Every tag needs to be in the format: ``<label>:<value>``.
-By default, every metric, will have the ``source`` and ``target`` labels applied.
+A list of additional tags (or labels), represented as strings, applied to the metrics. Every tag value must be in the format: ``<label>:<value>``.
+By default, every metric will have the ``source`` and ``target`` tags (labels) applied.
 
 Configuration example:
 
