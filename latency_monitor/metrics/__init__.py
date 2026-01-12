@@ -5,7 +5,7 @@ Metrics backends
 """
 
 from latency_monitor.metrics.cli import Cli
-from latency_monitor.metrics.clickhouse import Clickhouse
+from latency_monitor.metrics.clickhouse import ClickHouse
 from latency_monitor.metrics.datadog import Datadog
 from latency_monitor.metrics.log import Log
 from latency_monitor.metrics.pushgateway import Pushgateway
@@ -17,5 +17,5 @@ __metrics__ = {
     "zeromq": ZeroMQ,
     "datadog": Datadog,
     "pushgateway": Pushgateway,
-    "clickhouse": Clickhouse,
+    "clickhouse": ClickHouse,
 }
