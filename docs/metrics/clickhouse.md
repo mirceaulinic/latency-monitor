@@ -10,7 +10,7 @@ external dependency when using pip: ``pip install latency-monitor[clickhouse]``.
 The following configuration options are available:
 
 * ``host``: the IP or hostname of the Clickhouse server.
-* ``port``: the port number Clickhouse is listening on. Default: ``9443``.
+* ``port``: the port number Clickhouse is listening on. Default: ``8443``.
 * ``username``: the Clickhouse username. Default: ``default``.
 * ``password``: the Clickhouse password.
 * ``table``: the table name where to insert the entries. Default: ``metrics``.
