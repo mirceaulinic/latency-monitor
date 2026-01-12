@@ -186,7 +186,7 @@ The tool supports pluggable metrics backends. Currently the following are availa
 
 - Datadog
 - ZeroMQ
-- Clickhouse
+- ClickHouse
 - Pushgateway
 - Cli
 - Log

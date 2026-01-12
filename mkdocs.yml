@@ -25,5 +25,5 @@ nav:
     - Log: metrics/log.md
     - ZeroMQ: metrics/zeromq.md
     - Datadog: metrics/datadog.md
-    - Clickhouse: metrics/clickhouse.md
+    - ClickHouse: metrics/clickhouse.md
     - Pushgateway: metrics/pushgateway.md
