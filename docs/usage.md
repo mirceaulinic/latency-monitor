@@ -49,7 +49,7 @@ tcp_port = 1234
 
 ### ``udp_port``: 8001
 
-The UDP port for incoming connections. The CLI argument is ``--udp-port``;
+The UDP port for incoming connections. The CLI argument is ``--udp-port``.
 
 Configuration example:
 
