@@ -1,6 +1,6 @@
 # Prometheus Pushgateway
 
-Prometheus scraping wouldn't really work have super frequent scrapes (which defeats the purpose of Prometheus), or you 
+Prometheus scraping wouldn't really work with super frequent scrapes (which defeats the purpose of Prometheus), or you 
 have very rare probing (which somewhat defeats the purpose of ``latency-monitor``). But if you do need to use Prometheus 
 for some reason, Pushgateway may be a better fit -- but with a major caveat: since the metrics can't be pushed at the 
 same frequency as the probing, there'll be multiple metric samples in one push. Because of that, there'll be 
