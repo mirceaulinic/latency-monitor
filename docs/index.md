@@ -7,7 +7,7 @@ pluggable interface for metrics publishing.
 
 - **TCP Latency Monitoring**: Monitor TCP connection latency one-way and round-trip to specified endpoints.
 - **UDP Latency Monitoring**: Measure UDP one-way and round-trip time to target hosts.
-- **Pluggable Metrics**: Flexible interface for publishing metrics to various backends
+- **Pluggable Metrics**: Flexible interface for publishing metrics to various backends.
 - **Configurable**: Easy configuration for monitoring targets and intervals.
 - **Precision**: Measurements are collected in nanoseconds, and probes can be executed every millisecond. This is ideal
   for capturing micro-bursts, or rapidly changing environments.
