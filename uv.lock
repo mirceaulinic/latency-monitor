@@ -202,7 +202,7 @@ wheels = [
 
 [[package]]
 name = "datadog-api-client"
-version = "2.48.0"
+version = "2.49.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -210,9 +210,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/7c/3d0823aee88c02bb557e8a5f11791aa47e61d5ff2138103b3ac275c654b4/datadog_api_client-2.48.0.tar.gz", hash = "sha256:cc676d4f6269463a9772c0661405f5ebb0e149ff23c820926e89dc088da3dc49", size = 3800316, upload-time = "2025-12-17T18:11:08.942Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/25/17763ba98263e9428fe7a3366a97d93d2d1e72c87bba774d0a90523ca346/datadog_api_client-2.49.0.tar.gz", hash = "sha256:6d9398a63b9581e6f9eebeba735afecf9114fdb16e6a72bc8e69ff4252778dbe", size = 3838791, upload-time = "2026-01-08T17:19:47.433Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/2e/34b102a6d46426c9ff9130c179051d721e1318c52c363133b117066228b7/datadog_api_client-2.48.0-py3-none-any.whl", hash = "sha256:899acdbfdd3c861ac9cad8cea9aeb4291a0c096f985a6868a6eb4d433943de08", size = 4784140, upload-time = "2025-12-17T18:11:06.862Z" },
+    { url = "https://files.pythonhosted.org/packages/97/66/7fd31da132ed3b99517f70ad5041062e661b28ad834c1122006f915cfcd6/datadog_api_client-2.49.0-py3-none-any.whl", hash = "sha256:1cd9fca39f944fc8a37f82b5d07854b0ccf6193848d795aa48e1c38f6f89d67c", size = 4856275, upload-time = "2026-01-08T17:19:45.562Z" },
 ]
 
 [[package]]
