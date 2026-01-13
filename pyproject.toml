@@ -20,7 +20,6 @@ classifiers = [
   "Topic :: System :: Networking",
   "Topic :: Software Development :: Build Tools",
   "Topic :: System :: Networking :: Monitoring",
-  "License :: OSI Approved :: Apache Software License",
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
