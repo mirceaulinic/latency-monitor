@@ -18,7 +18,6 @@ classifiers = [
   "Topic :: Utilities",
   "Topic :: System :: Monitoring",
   "Topic :: System :: Networking",
-  "Topic :: Software Development :: Build Tools",
   "Topic :: System :: Networking :: Monitoring",
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
