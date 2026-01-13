@@ -15,13 +15,22 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 keywords = ["tcp", "udp", "latency", "datadog", "prometheus"]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
+  "Topic :: Utilities",
+  "Topic :: System :: Monitoring",
+  "Topic :: System :: Networking",
   "Topic :: Software Development :: Build Tools",
+  "Topic :: System :: Networking :: Monitoring",
+  "License :: OSI Approved :: Apache Software License",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: System Administrators",
+  "Intended Audience :: Telecommunications Industry",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent"
 ]
 
 [project.urls]
