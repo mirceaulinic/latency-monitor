@@ -20,7 +20,7 @@ classifiers = [
   "Topic :: System :: Networking",
   "Topic :: Software Development :: Build Tools",
   "Topic :: System :: Networking :: Monitoring",
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Intended Audience :: System Administrators",
