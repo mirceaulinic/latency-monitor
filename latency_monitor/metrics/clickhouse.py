@@ -3,6 +3,7 @@
 ClickHouse metrics backend
 ==========================
 """
+
 import datetime
 import logging
 

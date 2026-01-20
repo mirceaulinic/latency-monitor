@@ -53,8 +53,7 @@ def parse_args(opts):
     """
     parser = argparse.ArgumentParser(
         description="Lightweight TCP and UDP latency monitoring tool",
-        epilog=textwrap.dedent(
-            """
+        epilog=textwrap.dedent("""
             Examples:
               Start in server mode, i.e., only listen to probes:
                 latency-monitor
@@ -67,8 +66,7 @@ def parse_args(opts):
 
               Rapid UDP probing (every millisecond) only OWD:
                 latency-monitor -c latency.toml --no-tcp --no-rtt -i 1
-        """
-        ),
+        """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 

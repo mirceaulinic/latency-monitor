@@ -2,6 +2,7 @@
 """
 Base class for the metrics accumulator.
 """
+
 import logging
 import time
 
