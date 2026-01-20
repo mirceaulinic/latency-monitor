@@ -3,6 +3,7 @@
 Latency Monitor defaults
 ========================
 """
+
 import json
 import os
 import socket
