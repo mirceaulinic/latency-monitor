@@ -200,7 +200,10 @@ def owd_udp_client(metrics_q, target, **opts):
     max_size = _max_size(opts)
     lost = 0
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as skt:
+        with socket.socket(
+            socket.AF_INET6 if ":" in target["host"] else socket.AF_INET,
+            socket.SOCK_DGRAM,
+        ) as skt:
             seq = 0
             while True:
                 ts = time.time_ns()
