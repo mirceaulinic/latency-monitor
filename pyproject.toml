@@ -1,6 +1,6 @@
 [project]
-name = "latency-monitor"
-version = "0.1.1"
+name = "selini-external-latency-monitor"
+version = "0.0.0"
 description = "Daemon that acts as both client & server for monitoring latency between different endpoints"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -32,10 +32,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mirceaulinic/latency-monitor"
-Documentation = "https://github.com/mirceaulinic/latency-monitor/README.md"
-Repository = "https://github.com/mirceaulinic/latency-monitor.git"
-Issues = "https://github.com/mirceaulinic/latency-monitor/issues"
+Homepage = "https://github.com/Selini-3rdparty/latency-monitor"
+Repository = "https://github.com/Selini-3rdparty/latency-monitor.git"
 
 [project.scripts]
 latency-monitor="latency_monitor.main:start"
