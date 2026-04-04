@@ -494,14 +494,14 @@ wheels = [
 
 [[package]]
 name = "mkdocs-dracula-theme"
-version = "1.0.8"
+version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mkdocs" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/6e/a0fa20a34e9bb6194a0668a3f9ecf2b2e00b6204526ec64ff6ee96368cf9/mkdocs_dracula_theme-1.0.8.tar.gz", hash = "sha256:5da6e9b118e3379b5591780ade6e8ad9f3d8ac70c28e50e7fd2a4548670581e5", size = 458668, upload-time = "2025-08-04T18:25:34.369Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/fa/7c2f9e95dd129a05e40e1e4dec06824d242bc8c13e20ae8adbf7384e61c0/mkdocs_dracula_theme-1.0.9.tar.gz", hash = "sha256:8596670e8a8f72c27b89026bfb1885424ecee5d54130a617e651e27920338e21", size = 458690, upload-time = "2026-03-10T02:53:52.068Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/ba/39fa5ac5017caedca6bd9d722cf451597b0d4ff6e6cc5b0e735892ff2a42/mkdocs_dracula_theme-1.0.8-py3-none-any.whl", hash = "sha256:bea486ec581792ae7eb2de3ec70c729df9740b56c552654cf38bcdb0979cbe37", size = 465211, upload-time = "2025-08-04T18:25:33.303Z" },
+    { url = "https://files.pythonhosted.org/packages/34/3b/b71d95055128a0049b426b85f8ca877919f914b6381c02f816bebed8e70e/mkdocs_dracula_theme-1.0.9-py3-none-any.whl", hash = "sha256:f7d6ad0521041f49e32d454b1d8158695bb833e53d679a12f5dd7cef13738f07", size = 465260, upload-time = "2026-03-10T02:53:50.099Z" },
 ]
 
 [[package]]
