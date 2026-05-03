@@ -13,7 +13,7 @@ maintainers = [
 ]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-keywords = ["tcp", "udp", "latency", "datadog", "prometheus"]
+keywords = ["tcp", "udp", "network", "latency", "datadog", "prometheus", "clickhouse", "zeromq"]
 classifiers = [
   "Topic :: Utilities",
   "Topic :: System :: Monitoring",
@@ -42,30 +42,29 @@ latency-monitor="latency_monitor.main:start"
 
 [project.optional-dependencies]
 datadog = [
-    "datadog-api-client>=2.47.0",
+    "datadog-api-client>=2.54.0",
 ]
 prometheus = [
-    "prometheus-client>=0.23.1",
+    "prometheus-client>=0.25.0",
 ]
 zeromq = [
     "pyzmq>=27.1.0",
 ]
-
 clickhouse = [
-    "clickhouse-connect>=0.10.0",
+    "clickhouse-connect>=0.15.1",
 ]
 
 [dependency-groups]
 dev = [
-    "black>=25.12.0",
-    "isort>=7.0.0",
-    "pylint>=4.0.4",
+    "black>=26.3.1",
+    "isort>=8.0.1",
+    "pylint>=4.0.5",
 ]
 docs = [
     "mkdocs>=1.6.1",
-    "mkdocs-dracula-theme>=1.0.8",
+    "mkdocs-dracula-theme>=1.0.9",
     "mkdocs-glightbox>=0.5.2",
-    "pymdown-extensions>=10.20",
+    "pymdown-extensions>=10.21.2",
 ]
 
 [tool.uv]
